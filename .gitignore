@@ -208,3 +208,10 @@ __marimo__/
 
 #VSCode 
 .vscode
+
+# CDK
+*.js
+*.d.ts
+node_modules/
+cdk.out/
+.cdk.staging/
