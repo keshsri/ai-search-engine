@@ -1,8 +1,7 @@
-# TODO: Implement FastAPI application
 from fastapi import FastAPI
+from app.api import health, documents
 
-app = FastAPI()
+app = FastAPI(title="AI Search Engine")
 
-@app.get("/health")
-def health():
-    return{"status":"ok"}
+app.include_router(health.router)
+app.include_router(documents.router)

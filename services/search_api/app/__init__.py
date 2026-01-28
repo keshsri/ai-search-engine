@@ -1,1 +1,1 @@
-# Search API Application Package
+# Search API Package
