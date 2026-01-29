@@ -1,11 +1,16 @@
 import uuid
 from typing import Optional
+import logging
 from app.models.document import Document
 from app.services.dynamodb_client import DynamoDBClient
+from app.services.chunking_service import ChunkingService
+
+logger = logging.getLogger(__name__)
 
 class DocumentService:
     def __init__(self):
         self.db = DynamoDBClient()
+        self.chunker = ChunkingService()
 
     def ingest(self, document: Document) -> Document:
         document.id = document.id or str(uuid.uuid4())
@@ -17,6 +22,9 @@ class DocumentService:
             "source": document.source,
             "created_at": document.created_at.isoformat()
         }
+
+        chunks = self.chunker.chunk_text(document.id, document.content)
+        logger.info(f"Created {len(chunks)} chunks for document {document.id}")
 
         self.db.table.put_item(Item=item)
         return document
