@@ -2,7 +2,7 @@ import faiss
 import numpy as np
 from typing import List, Dict
 
-from app.services.vector_store import VectorStore
+from app.vector_store.base import VectorStore
 
 
 class FAISSVectorStore(VectorStore):
@@ -21,8 +21,10 @@ class FAISSVectorStore(VectorStore):
         distances, indices = self.index.search(query_np, top_k)
 
         results = []
-        for idx in indices[0]:
+        for distance, idx in zip(distances[0], indices[0]):
             if idx < len(self.metadata):
-                results.append(self.metadata[idx])
+                result = self.metadata[idx].copy()
+                result["score"] = float(distance)
+                results.append(result)
 
         return results

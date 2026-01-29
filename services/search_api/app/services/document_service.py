@@ -1,21 +1,24 @@
 import uuid
 from typing import Optional
 import logging
+
 from app.models.document import Document
-from app.services.dynamodb_client import DynamoDBClient
+from app.db.dynamodb import DynamoDBClient
 from app.services.chunking_service import ChunkingService
 from app.services.dummy_embedding_service import DummyEmbeddingService
-from app.services.faiss_vector_store import FAISSVectorStore
+from app.vector_store.faiss_store import FAISSVectorStore
+from app.core.config import settings
 
 
 logger = logging.getLogger(__name__)
 
+
 class DocumentService:
     def __init__(self):
         self.db = DynamoDBClient()
-        self.chunker = ChunkingService()
-        self.embedding_service = DummyEmbeddingService()
-        self.vector_store = FAISSVectorStore()
+        self.chunker = ChunkingService(chunk_size=settings.CHUNK_SIZE)
+        self.embedding_service = DummyEmbeddingService(dimension=settings.EMBEDDING_DIMENSION)
+        self.vector_store = FAISSVectorStore(dimension=settings.EMBEDDING_DIMENSION)
 
 
     def ingest(self, document: Document) -> Document:
