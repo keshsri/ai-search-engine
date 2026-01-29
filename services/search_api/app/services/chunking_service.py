@@ -8,7 +8,7 @@ from nltk.tokenize import sent_tokenize
 from app.models.chunk import Chunk
 
 # Ensure tokenizer is available (safe to call multiple times)
-nltk.download("punkt", quiet=True)
+nltk.download("punkt_tab", quiet=True)
 
 logger = logging.getLogger(__name__)
 

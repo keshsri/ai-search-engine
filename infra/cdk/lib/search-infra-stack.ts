@@ -16,8 +16,26 @@ export class SearchInfraStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
+    const chunksTable = new dynamodb.Table(this, 'DocumentsChunksTable', {
+      partitionKey: {
+        name: "document_id",
+        type: dynamodb.AttributeType.STRING,
+      },
+      sortKey: {
+        name: "chunk_id",
+        type: dynamodb.AttributeType.STRING,
+      },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      tableName: "document_chunks",
+    });
+
     new cdk.CfnOutput(this, 'DocumentsTableName', {
       value: documentsTable.tableName,
+    });
+
+    new cdk.CfnOutput(this, "ChunksTableName", {
+      value: chunksTable.tableName,
     });
   }
 }
