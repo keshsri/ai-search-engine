@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from app.api import health, documents
+from app.api import health, documents, search
 from app.core.logging import setup_logging
 from app.core.config import settings
 
@@ -12,5 +12,7 @@ app = FastAPI(
     version="0.1.0"
 )
 
+# ---- Routers ----
 app.include_router(health.router)
 app.include_router(documents.router)
+app.include_router(search.router)
