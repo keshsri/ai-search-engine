@@ -8,7 +8,7 @@ from app.models.document import Document
 from app.db.dynamodb import DynamoDBClient
 from app.db.chunks_dynamodb import ChunksDynamoDB
 from app.services.chunking_service import ChunkingService
-from app.services.embedding_service import EmbeddingService
+from app.services.embedding_service import get_embedding_service
 from app.vector_store.faiss_vector_store import FAISSVectorStore
 from app.core.config import settings
 from app.core.exceptions import (
@@ -25,7 +25,7 @@ class DocumentService:
         self.db = DynamoDBClient()
         self.chunks_db = ChunksDynamoDB()
         self.chunker = ChunkingService(chunk_size=settings.CHUNK_SIZE)
-        self.embedding_service = EmbeddingService()
+        self.embedding_service = get_embedding_service()
         self.vector_store = vector_store
 
     def ingest(self, document: Document) -> Document:

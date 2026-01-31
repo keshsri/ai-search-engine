@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from app.models.search import SearchRequest, SearchResult
 from app.services.search_service import SearchService
-from app.services.embedding_service import EmbeddingService
+from app.services.embedding_service import get_embedding_service
 from app.dependencies import get_vector_store
 from app.core.exceptions import InvalidSearchQueryException
 from typing import List
@@ -34,7 +34,7 @@ def semantic_search(
             details={"top_k": request.top_k}
         )
     
-    embedding_service = EmbeddingService()
+    embedding_service = get_embedding_service()
     search_service = SearchService(embedding_service, vector_store)
     
     logger.debug("Executing semantic search")

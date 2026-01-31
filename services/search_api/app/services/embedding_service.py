@@ -7,6 +7,9 @@ from app.core.exceptions import EmbeddingException
 
 logger = logging.getLogger(__name__)
 
+# Global singleton instance
+_embedding_service_instance = None
+
 class EmbeddingService:
     def __init__(self):
         logger.info("Initializing EmbeddingService with model: all-MiniLM-L6-v2")
@@ -42,3 +45,10 @@ class EmbeddingService:
                 message="Failed to generate embeddings",
                 details={"error": str(e), "text_count": len(texts)}
             )
+
+def get_embedding_service() -> EmbeddingService:
+    """Get or create singleton EmbeddingService instance."""
+    global _embedding_service_instance
+    if _embedding_service_instance is None:
+        _embedding_service_instance = EmbeddingService()
+    return _embedding_service_instance
