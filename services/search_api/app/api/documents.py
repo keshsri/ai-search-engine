@@ -1,9 +1,14 @@
-from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
+from fastapi import APIRouter, Depends, UploadFile, File
 from app.models.document import Document
 from app.services.document_service import DocumentService
 from app.services.file_processor import FileProcessor
 from app.services.file_storage import FileStorage
 from app.dependencies import get_vector_store
+from app.core.exceptions import (
+    InvalidFileTypeException,
+    FileSizeExceededException,
+    EmptyDocumentException,
+)
 import uuid
 import logging
 
@@ -36,9 +41,6 @@ def get_document(
     logger.info(f"Retrieving document: id={document_id}")
     service = DocumentService(vector_store)
     doc = service.get_by_id(document_id)
-    if not doc:
-        logger.warning(f"Document not found: id={document_id}")
-        raise HTTPException(status_code=404, detail="Document Not Found")
     logger.info(f"Successfully retrieved document: id={document_id}")
     return doc
 
@@ -59,7 +61,9 @@ async def upload_document(
         Document: Created document with metadata
     
     Raises:
-        HTTPException: If file type unsupported or processing fails
+        InvalidFileTypeException: If file type is not supported
+        FileSizeExceededException: If file exceeds size limit
+        EmptyDocumentException: If no text can be extracted
     """
     
     logger.info(f"File upload request received: filename='{file.filename}'")
@@ -70,9 +74,13 @@ async def upload_document(
     
     if file_extension not in file_processor.SUPPORTED_TYPES:
         logger.error(f"Unsupported file type: {file_extension}")
-        raise HTTPException(
-            status_code=400,
-            detail=f"Unsupported file type: {file_extension}. Supported: {file_processor.SUPPORTED_TYPES}"
+        raise InvalidFileTypeException(
+            message=f"Unsupported file type: {file_extension}",
+            details={
+                "file_type": file_extension,
+                "supported_types": file_processor.SUPPORTED_TYPES,
+                "filename": file.filename
+            }
         )
     
     # 2. Validate file size (10MB limit)
@@ -84,60 +92,61 @@ async def upload_document(
     
     if file_size > MAX_FILE_SIZE:
         logger.error(f"File too large: {file_size} bytes (max: {MAX_FILE_SIZE})")
-        raise HTTPException(
-            status_code=400,
-            detail=f"File too large: {file_size} bytes. Max: {MAX_FILE_SIZE} bytes (10MB)"
+        raise FileSizeExceededException(
+            message=f"File size exceeds maximum allowed size",
+            details={
+                "file_size_bytes": file_size,
+                "max_size_bytes": MAX_FILE_SIZE,
+                "file_size_mb": round(file_size / 1024 / 1024, 2),
+                "max_size_mb": 10,
+                "filename": file.filename
+            }
         )
     
     # Reset file pointer after reading
     await file.seek(0)
     
-    try:
-        # 3. Generate document ID
-        document_id = str(uuid.uuid4())
-        logger.info(f"Generated document ID: {document_id}")
-        
-        # 4. Save original file
-        logger.debug("Saving original file to storage")
-        file_path = file_storage.save(file.file, document_id, file_extension)
-        logger.info(f"Original file saved: {file_path}")
-        
-        # 5. Extract text from file
-        await file.seek(0)  # Reset pointer again
-        logger.debug("Extracting text from file")
-        text = file_processor.extract_text(file.file, file_extension)
-        
-        if not text or not text.strip():
-            logger.error("No text could be extracted from file")
-            raise ValueError("No text could be extracted from file")
-        
-        logger.info(f"Text extracted successfully: {len(text)} characters")
-        
-        # 6. Create document object
-        document = Document(
-            id=document_id,
-            title=file.filename,  # Use filename as title
-            content=text,
-            filename=file.filename,
-            file_type=file_extension,
-            file_size=file_size,
-            file_path=file_path
-        )
-        
-        logger.debug(f"Document object created: id={document_id}, title='{document.title}'")
-        
-        # 7. Ingest document (existing logic)
-        logger.info(f"Starting document ingestion: id={document_id}")
-        service = DocumentService(vector_store)
-        ingested_doc = service.ingest(document)
-        
-        logger.info(f"Document upload completed successfully: id={document_id}, filename='{file.filename}'")
-        
-        return ingested_doc
+    # 3. Generate document ID
+    document_id = str(uuid.uuid4())
+    logger.info(f"Generated document ID: {document_id}")
     
-    except ValueError as e:
-        logger.error(f"Validation error during file upload: {str(e)}")
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        logger.error(f"Unexpected error during file upload: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
+    # 4. Save original file
+    logger.debug("Saving original file to storage")
+    file_path = file_storage.save(file.file, document_id, file_extension)
+    logger.info(f"Original file saved: {file_path}")
+    
+    # 5. Extract text from file
+    await file.seek(0)  # Reset pointer again
+    logger.debug("Extracting text from file")
+    text = file_processor.extract_text(file.file, file_extension)
+    
+    if not text or not text.strip():
+        logger.error("No text could be extracted from file")
+        raise EmptyDocumentException(
+            message="No text could be extracted from file",
+            details={"filename": file.filename, "file_type": file_extension}
+        )
+    
+    logger.info(f"Text extracted successfully: {len(text)} characters")
+    
+    # 6. Create document object
+    document = Document(
+        id=document_id,
+        title=file.filename,  # Use filename as title
+        content=text,
+        filename=file.filename,
+        file_type=file_extension,
+        file_size=file_size,
+        file_path=file_path
+    )
+    
+    logger.debug(f"Document object created: id={document_id}, title='{document.title}'")
+    
+    # 7. Ingest document (existing logic)
+    logger.info(f"Starting document ingestion: id={document_id}")
+    service = DocumentService(vector_store)
+    ingested_doc = service.ingest(document)
+    
+    logger.info(f"Document upload completed successfully: id={document_id}, filename='{file.filename}'")
+    
+    return ingested_doc

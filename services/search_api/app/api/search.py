@@ -3,6 +3,7 @@ from app.models.search import SearchRequest, SearchResult
 from app.services.search_service import SearchService
 from app.services.embedding_service import EmbeddingService
 from app.dependencies import get_vector_store
+from app.core.exceptions import InvalidSearchQueryException
 from typing import List
 import logging
 
@@ -17,6 +18,21 @@ def semantic_search(
     vector_store=Depends(get_vector_store)
 ):
     logger.info(f"Search request received: query='{request.query}', top_k={request.top_k}")
+    
+    # Validate query
+    if not request.query or not request.query.strip():
+        logger.warning("Empty search query received")
+        raise InvalidSearchQueryException(
+            message="Search query cannot be empty",
+            details={"query": request.query}
+        )
+    
+    if request.top_k <= 0:
+        logger.warning(f"Invalid top_k value: {request.top_k}")
+        raise InvalidSearchQueryException(
+            message="top_k must be greater than 0",
+            details={"top_k": request.top_k}
+        )
     
     embedding_service = EmbeddingService()
     search_service = SearchService(embedding_service, vector_store)

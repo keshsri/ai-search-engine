@@ -5,6 +5,8 @@ import json
 from typing import List, Dict
 import logging
 
+from app.core.exceptions import VectorStoreException
+
 logger = logging.getLogger(__name__)
 
 class FAISSVectorStore:
@@ -27,10 +29,20 @@ class FAISSVectorStore:
                 return index
             except Exception as e:
                 logger.error(f"Failed to load FAISS index from {self.index_path}: {str(e)}")
-                raise
+                raise VectorStoreException(
+                    message="Failed to load vector index",
+                    details={"index_path": self.index_path, "error": str(e)}
+                )
         else:
             logger.info(f"Creating new FAISS IndexFlatIP with dimension {self.dim}")
-            return faiss.IndexFlatIP(self.dim)
+            try:
+                return faiss.IndexFlatIP(self.dim)
+            except Exception as e:
+                logger.error(f"Failed to create FAISS index: {str(e)}")
+                raise VectorStoreException(
+                    message="Failed to create vector index",
+                    details={"dimension": self.dim, "error": str(e)}
+                )
 
     def _load_metadata(self) -> List[Dict]:
         if os.path.exists(self.metadata_path):
@@ -42,7 +54,10 @@ class FAISSVectorStore:
                 return metadata
             except Exception as e:
                 logger.error(f"Failed to load metadata from {self.metadata_path}: {str(e)}")
-                raise
+                raise VectorStoreException(
+                    message="Failed to load vector metadata",
+                    details={"metadata_path": self.metadata_path, "error": str(e)}
+                )
         else:
             logger.info("No existing metadata file found, starting with empty metadata")
             return []
@@ -55,7 +70,13 @@ class FAISSVectorStore:
         logger.debug(f"Adding {len(vectors)} vectors to FAISS index")
         logger.debug(f"Vector shape: {vectors.shape}, expected dimension: {self.dim}")
 
-        assert vectors.shape[1] == self.dim, f"Vector dimension mismatch: got {vectors.shape[1]}, expected {self.dim}"
+        if vectors.shape[1] != self.dim:
+            error_msg = f"Vector dimension mismatch: got {vectors.shape[1]}, expected {self.dim}"
+            logger.error(error_msg)
+            raise VectorStoreException(
+                message="Vector dimension mismatch",
+                details={"expected": self.dim, "received": vectors.shape[1]}
+            )
 
         try:
             previous_count = self.index.ntotal
@@ -64,9 +85,14 @@ class FAISSVectorStore:
             logger.info(f"Added {len(vectors)} vectors to FAISS index (total: {previous_count} -> {self.index.ntotal})")
             
             self._persist()
+        except VectorStoreException:
+            raise
         except Exception as e:
             logger.error(f"Failed to add vectors to FAISS index: {str(e)}")
-            raise
+            raise VectorStoreException(
+                message="Failed to add vectors to index",
+                details={"vector_count": len(vectors), "error": str(e)}
+            )
 
     def search(self, query_vector: np.ndarray, top_k: int = 5):
         if self.index.ntotal == 0:
@@ -85,13 +111,19 @@ class FAISSVectorStore:
                 if idx == -1:
                     logger.debug("Encountered -1 index (no match), skipping")
                     continue
+                if idx >= len(self.metadata):
+                    logger.warning(f"Index {idx} out of bounds for metadata (size: {len(self.metadata)})")
+                    continue
                 results.append(self.metadata[idx])
 
             logger.info(f"Search completed: found {len(results)} results out of {top_k} requested")
             return results
         except Exception as e:
             logger.error(f"Failed to search FAISS index: {str(e)}")
-            raise
+            raise VectorStoreException(
+                message="Failed to search vector index",
+                details={"top_k": top_k, "error": str(e)}
+            )
 
     def _persist(self):
         logger.debug(f"Persisting FAISS index to {self.index_path} and metadata to {self.metadata_path}")
@@ -102,4 +134,7 @@ class FAISSVectorStore:
             logger.info(f"Successfully persisted FAISS index ({self.index.ntotal} vectors) and {len(self.metadata)} metadata entries")
         except Exception as e:
             logger.error(f"Failed to persist FAISS index or metadata: {str(e)}")
-            raise
+            raise VectorStoreException(
+                message="Failed to persist vector index",
+                details={"index_path": self.index_path, "metadata_path": self.metadata_path, "error": str(e)}
+            )

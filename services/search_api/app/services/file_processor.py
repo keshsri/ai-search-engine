@@ -4,6 +4,8 @@ import PyPDF2
 from docx import Document as DocxDocument
 import logging
 
+from app.core.exceptions import FileProcessingException, InvalidFileTypeException
+
 logger = logging.getLogger(__name__)
 
 
@@ -27,7 +29,8 @@ class FileProcessor:
             str: Extracted text content
         
         Raises:
-            ValueError: If file type is not supported
+            InvalidFileTypeException: If file type is not supported
+            FileProcessingException: If text extraction fails
         """
         file_type = file_type.lower()
         
@@ -35,7 +38,10 @@ class FileProcessor:
         
         if file_type not in self.SUPPORTED_TYPES:
             logger.error(f"Unsupported file type: {file_type}")
-            raise ValueError(f"Unsupported file type: {file_type}. Supported: {self.SUPPORTED_TYPES}")
+            raise InvalidFileTypeException(
+                message=f"Unsupported file type: {file_type}",
+                details={"file_type": file_type, "supported_types": self.SUPPORTED_TYPES}
+            )
         
         # Extract based on file type
         if file_type == "pdf":
@@ -54,6 +60,9 @@ class FileProcessor:
         
         Returns:
             str: Extracted text
+        
+        Raises:
+            FileProcessingException: If PDF extraction fails
         """
         logger.debug("Extracting text from PDF")
         
@@ -75,11 +84,23 @@ class FileProcessor:
             full_text = "\n\n".join(text_parts)
             logger.info(f"Successfully extracted {len(full_text)} characters from PDF")
             
+            if not full_text.strip():
+                logger.warning("PDF extraction resulted in empty text")
+                raise FileProcessingException(
+                    message="PDF contains no extractable text",
+                    details={"pages": num_pages}
+                )
+            
             return self._clean_text(full_text)
         
+        except FileProcessingException:
+            raise
         except Exception as e:
             logger.error(f"Error extracting text from PDF: {str(e)}")
-            raise ValueError(f"Error extracting text from PDF: {str(e)}")
+            raise FileProcessingException(
+                message="Failed to extract text from PDF",
+                details={"error": str(e)}
+            )
     
     def _extract_from_docx(self, file: BinaryIO) -> str:
         """
@@ -90,6 +111,9 @@ class FileProcessor:
         
         Returns:
             str: Extracted text
+        
+        Raises:
+            FileProcessingException: If DOCX extraction fails
         """
         logger.debug("Extracting text from DOCX")
         
@@ -109,11 +133,23 @@ class FileProcessor:
             full_text = "\n\n".join(text_parts)
             logger.info(f"Successfully extracted {len(full_text)} characters from DOCX")
             
+            if not full_text.strip():
+                logger.warning("DOCX extraction resulted in empty text")
+                raise FileProcessingException(
+                    message="DOCX contains no extractable text",
+                    details={"paragraphs": num_paragraphs}
+                )
+            
             return self._clean_text(full_text)
         
+        except FileProcessingException:
+            raise
         except Exception as e:
             logger.error(f"Error extracting text from DOCX: {str(e)}")
-            raise ValueError(f"Error extracting text from DOCX: {str(e)}")
+            raise FileProcessingException(
+                message="Failed to extract text from DOCX",
+                details={"error": str(e)}
+            )
     
     def _extract_from_txt(self, file: BinaryIO) -> str:
         """
@@ -124,6 +160,9 @@ class FileProcessor:
         
         Returns:
             str: Extracted text
+        
+        Raises:
+            FileProcessingException: If TXT extraction fails
         """
         logger.debug("Extracting text from TXT")
         
@@ -141,11 +180,23 @@ class FileProcessor:
             
             logger.info(f"Successfully extracted {len(text)} characters from TXT")
             
+            if not text.strip():
+                logger.warning("TXT file is empty")
+                raise FileProcessingException(
+                    message="TXT file contains no text",
+                    details={}
+                )
+            
             return self._clean_text(text)
         
+        except FileProcessingException:
+            raise
         except Exception as e:
             logger.error(f"Error extracting text from TXT: {str(e)}")
-            raise ValueError(f"Error extracting text from TXT: {str(e)}")
+            raise FileProcessingException(
+                message="Failed to extract text from TXT",
+                details={"error": str(e)}
+            )
     
     def _clean_text(self, text: str) -> str:
         """
