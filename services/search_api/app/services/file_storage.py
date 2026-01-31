@@ -10,16 +10,24 @@ logger = logging.getLogger(__name__)
 class FileStorage:
     """
     Handles storage and retrieval of uploaded files.
-    Currently stores locally, can be extended to use S3.
+    In Lambda, uses /tmp directory (writable).
     """
     
-    def __init__(self, storage_path: str = "uploads"):
+    def __init__(self, storage_path: str = None):
         """
         Initialize file storage.
         
         Args:
-            storage_path: Directory where files will be stored
+            storage_path: Directory where files will be stored.
+                         Defaults to /tmp/uploads in Lambda, uploads/ locally.
         """
+        if storage_path is None:
+            # Use /tmp in Lambda (writable), uploads/ locally
+            if os.environ.get('AWS_LAMBDA_FUNCTION_NAME'):
+                storage_path = "/tmp/uploads"
+            else:
+                storage_path = "uploads"
+        
         self.storage_path = Path(storage_path)
         # Create uploads directory if it doesn't exist
         self.storage_path.mkdir(parents=True, exist_ok=True)
