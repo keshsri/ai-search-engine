@@ -86,7 +86,8 @@ export class SearchLambda extends Construct {
         API_GATEWAY_STAGE: 'dev',
         
         // Bedrock configuration (use inference profile for on-demand access)
-        BEDROCK_MODEL_ID: 'us.anthropic.claude-3-5-haiku-20241022-v1:0',
+        // Using Claude 3 Haiku (older version) - more likely to have access
+        BEDROCK_MODEL_ID: 'us.anthropic.claude-3-haiku-20240307-v1:0',
       },
       logGroup: new logs.LogGroup(this, 'LogGroup', {
         logGroupName: `/aws/lambda/ai-search-api`,
@@ -109,6 +110,16 @@ export class SearchLambda extends Construct {
         'bedrock:InvokeModelWithResponseStream',
       ],
       resources: ['*'], // Allow all Bedrock models
+    }));
+
+    // Grant AWS Marketplace permissions for Bedrock model subscriptions
+    this.function.addToRolePolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: [
+        'aws-marketplace:ViewSubscriptions',
+        'aws-marketplace:Subscribe',
+      ],
+      resources: ['*'],
     }));
 
     // Outputs

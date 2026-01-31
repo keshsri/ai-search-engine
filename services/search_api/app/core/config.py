@@ -24,7 +24,9 @@ class Settings(BaseSettings):
 
     # Bedrock / LLM
     # Use inference profile for on-demand access
-    BEDROCK_MODEL_ID: str = "us.anthropic.claude-3-5-haiku-20241022-v1:0"  # Inference profile ID
+    # Options: us.anthropic.claude-3-haiku-20240307-v1:0 (Claude 3 Haiku)
+    #          us.anthropic.claude-3-5-haiku-20241022-v1:0 (Claude 3.5 Haiku - requires access)
+    BEDROCK_MODEL_ID: str = "us.anthropic.claude-3-haiku-20240307-v1:0"  # Claude 3 Haiku
     BEDROCK_MAX_TOKENS: int = 1000
     BEDROCK_TEMPERATURE: float = 0.7
 
