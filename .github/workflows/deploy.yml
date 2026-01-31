@@ -49,12 +49,12 @@ jobs:
         working-directory: infra/cdk
         run: npm install
       
-      - name: Delete existing stack (if exists)
-        working-directory: infra/cdk
-        run: |
-          npm install -g aws-cdk
-          cdk destroy --force || true
+      - name: Install Python dependencies
+        working-directory: services/search_api
+        run: pip install -r requirements.txt
       
       - name: CDK Deploy
         working-directory: infra/cdk
-        run: cdk deploy --require-approval never
+        run: |
+          npm install -g aws-cdk
+          cdk deploy --require-approval never

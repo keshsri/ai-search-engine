@@ -16,8 +16,12 @@ RUN pip install --no-cache-dir -r requirements.txt && \
     find /var/lang/lib/python3.12/site-packages -type d -name "tests" -exec rm -rf {} + 2>/dev/null || true && \
     find /var/lang/lib/python3.12/site-packages -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
 
-# Download NLTK data
-RUN python -c "import nltk; nltk.download('punkt_tab', quiet=True)"
+# Set NLTK data path to /tmp (writable in Lambda)
+ENV NLTK_DATA=/tmp/nltk_data
+
+# Download NLTK data to /tmp
+RUN mkdir -p /tmp/nltk_data && \
+    python -c "import nltk; nltk.data.path.append('/tmp/nltk_data'); nltk.download('punkt_tab', download_dir='/tmp/nltk_data', quiet=True)"
 
 # Pre-download the sentence-transformers model to reduce cold start time
 RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')"

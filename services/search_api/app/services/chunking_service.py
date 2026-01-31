@@ -1,14 +1,16 @@
 import uuid
 import logging
 from typing import List
+import os
 
 import nltk
 from nltk.tokenize import sent_tokenize
 
 from app.models.chunk import Chunk
 
-# Ensure tokenizer is available (safe to call multiple times)
-nltk.download("punkt_tab", quiet=True)
+# Set NLTK data path for Lambda environment
+if os.environ.get('AWS_LAMBDA_FUNCTION_NAME'):
+    nltk.data.path.append('/tmp/nltk_data')
 
 logger = logging.getLogger(__name__)
 
