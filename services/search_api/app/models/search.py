@@ -10,3 +10,5 @@ class SearchResult(BaseModel):
     chunk_id: str
     index: int
     content: str
+    document_title: str = "Unknown"  # Optional with default
+    score: float = 0.0  # Optional with default

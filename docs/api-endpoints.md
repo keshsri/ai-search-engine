@@ -1,45 +1,51 @@
-# API Endpoints
+# API Reference
 
-Complete API reference for the AI Semantic Search API.
+Complete API documentation for the AI Semantic Search Engine.
 
-**Base URL:** `https://e78bx2zpd7.execute-api.us-east-1.amazonaws.com/dev`
+## Base URL
 
----
+```
+https://<api-id>.execute-api.<region>.amazonaws.com/dev
+```
 
-## Health Check
+Replace with your actual API Gateway endpoint after deployment.
 
-### `GET /health/`
+## Authentication
 
-Check if the API is running.
+Currently no authentication required. For production use, implement API keys or JWT.
 
-**Response:**
+## Endpoints
+
+### Health Check
+
+```http
+GET /health/
+```
+
+**Response**:
 ```json
-{
-  "status": "ok"
-}
+{"status": "ok"}
 ```
 
 ---
 
-## Documents
+### Ingest Document (JSON)
 
-### `POST /documents/`
+```http
+POST /documents/
+Content-Type: application/json
 
-Ingest a document via JSON.
-
-**Request Body:**
-```json
 {
-  "title": "My Document",
-  "content": "Document text content here..."
+  "title": "Document Title",
+  "content": "Document text content..."
 }
 ```
 
-**Response:**
+**Response**:
 ```json
 {
   "document_id": "uuid",
-  "title": "My Document",
+  "title": "Document Title",
   "content": "Document text...",
   "created_at": "2026-01-31T12:00:00Z"
 }
@@ -47,58 +53,52 @@ Ingest a document via JSON.
 
 ---
 
-### `POST /documents/upload`
+### Upload Document (File)
 
-Upload a document file (PDF, DOCX, TXT).
+```http
+POST /documents/upload
+Content-Type: multipart/form-data
 
-**Request:**
-- Content-Type: `multipart/form-data`
-- Field: `file` (binary file)
+file: <binary>
+```
 
-**Example:**
+**Supported formats**: PDF, DOCX, TXT
+
+**Example**:
 ```bash
-curl -X POST https://your-api.com/dev/documents/upload \
-  -F "file=@document.txt"
+curl -X POST https://your-api/dev/documents/upload \
+  -F "file=@document.pdf"
 ```
 
-**Response:**
-```json
-{
-  "document_id": "uuid",
-  "title": "document.txt",
-  "content": "Extracted text...",
-  "created_at": "2026-01-31T12:00:00Z"
-}
-```
-
-**Supported Formats:**
-- `.txt` - Plain text
-- `.pdf` - PDF documents (text-based)
-- `.docx` - Microsoft Word documents
+**Response**: Same as JSON ingestion
 
 ---
 
-### `GET /documents/{document_id}`
+### Get Document
 
-Retrieve a specific document by ID.
+```http
+GET /documents/{document_id}
+```
 
-**Response:**
+**Response**:
 ```json
 {
   "document_id": "uuid",
-  "title": "My Document",
-  "content": "Document text...",
+  "title": "Document Title",
+  "content": "Full text...",
   "created_at": "2026-01-31T12:00:00Z"
 }
 ```
 
 ---
 
-### `DELETE /documents/{document_id}`
+### Delete Document
 
-Delete a document and all its chunks.
+```http
+DELETE /documents/{document_id}
+```
 
-**Response:**
+**Response**:
 ```json
 {
   "message": "Document deleted successfully",
@@ -108,21 +108,23 @@ Delete a document and all its chunks.
 
 ---
 
-## Search
+### Semantic Search
 
-### `POST /search/`
+```http
+POST /search/
+Content-Type: application/json
 
-Perform semantic search across all documents.
-
-**Request Body:**
-```json
 {
   "query": "What is machine learning?",
   "top_k": 5
 }
 ```
 
-**Response:**
+**Parameters**:
+- `query` (required): Search query
+- `top_k` (optional): Number of results (default: 5, max: 10)
+
+**Response**:
 ```json
 {
   "query": "What is machine learning?",
@@ -142,14 +144,12 @@ Perform semantic search across all documents.
 
 ---
 
-## Chat (RAG with LLM)
+### RAG Chat
 
-### `POST /chat/`
+```http
+POST /chat/
+Content-Type: application/json
 
-Ask questions and get AI-generated answers based on your documents.
-
-**Request Body:**
-```json
 {
   "query": "What is Python used for in AI?",
   "conversation_id": null,
@@ -157,43 +157,38 @@ Ask questions and get AI-generated answers based on your documents.
 }
 ```
 
-**Parameters:**
-- `query` (required): Your question
-- `conversation_id` (optional): Continue existing conversation (null for new)
-- `top_k` (optional): Number of relevant chunks to retrieve (default: 5)
+**Parameters**:
+- `query` (required): Question
+- `conversation_id` (optional): UUID for follow-up questions (null for new conversation)
+- `top_k` (optional): Number of context chunks (default: 5)
 
-**Response:**
+**Response**:
 ```json
 {
+  "answer": "Python is widely used in AI for...",
   "conversation_id": "uuid",
-  "message_id": "uuid",
-  "query": "What is Python used for in AI?",
-  "answer": "Python is widely used in AI for several reasons...",
   "sources": [
     {
       "document_id": "uuid",
-      "document_title": "Python AI Guide",
+      "document_title": "Python Guide",
       "content": "Python has emerged as...",
       "score": 0.92
     }
   ],
-  "created_at": "2026-01-31T12:00:00Z"
+  "model": "anthropic.claude-3-5-haiku-20241022-v1:0"
 }
 ```
 
-**Example - Start Conversation:**
+**Example - New Conversation**:
 ```bash
-curl -X POST https://your-api.com/dev/chat/ \
+curl -X POST https://your-api/dev/chat/ \
   -H "Content-Type: application/json" \
-  -d '{
-    "query": "What is Python used for in AI?",
-    "conversation_id": null
-  }'
+  -d '{"query": "What is Python used for in AI?"}'
 ```
 
-**Example - Continue Conversation:**
+**Example - Follow-up**:
 ```bash
-curl -X POST https://your-api.com/dev/chat/ \
+curl -X POST https://your-api/dev/chat/ \
   -H "Content-Type: application/json" \
   -d '{
     "query": "Tell me more about that",
@@ -203,27 +198,27 @@ curl -X POST https://your-api.com/dev/chat/ \
 
 ---
 
-### `GET /chat/conversations/{conversation_id}`
+### Get Conversation History
 
-Retrieve conversation history.
+```http
+GET /chat/conversations/{conversation_id}
+```
 
-**Response:**
+**Response**:
 ```json
 {
   "conversation_id": "uuid",
+  "user_id": "anonymous",
   "messages": [
     {
-      "message_id": "uuid",
       "role": "user",
       "content": "What is Python used for in AI?",
-      "created_at": "2026-01-31T12:00:00Z"
+      "timestamp": "2026-01-31T12:00:00Z"
     },
     {
-      "message_id": "uuid",
       "role": "assistant",
       "content": "Python is widely used...",
-      "sources": [...],
-      "created_at": "2026-01-31T12:00:01Z"
+      "timestamp": "2026-01-31T12:00:01Z"
     }
   ],
   "created_at": "2026-01-31T12:00:00Z",
@@ -233,102 +228,85 @@ Retrieve conversation history.
 
 ---
 
-## Interactive Documentation
-
-**Swagger UI:** `https://your-api.com/dev/docs`
-**ReDoc:** `https://your-api.com/dev/redoc`
-**OpenAPI JSON:** `https://your-api.com/dev/openapi.json`
-
----
-
 ## Error Responses
 
-All endpoints return consistent error format:
+All errors return consistent format:
 
 ```json
 {
   "error": {
     "type": "ErrorType",
     "message": "Human-readable error message",
-    "details": {
-      "additional": "context"
-    }
+    "details": {"key": "value"}
   }
 }
 ```
 
-**Common Error Types:**
-- `DocumentNotFoundException` - Document not found
-- `InvalidFileTypeException` - Unsupported file format
-- `FileSizeExceededException` - File too large
-- `FileProcessingException` - Error processing file
-- `EmptyDocumentException` - Document has no content
-- `DatabaseException` - Database error
-- `VectorStoreException` - Vector store error
-- `EmbeddingException` - Embedding generation error
-- `InvalidSearchQueryException` - Invalid search query
-- `ServiceUnavailableException` - Service temporarily unavailable
+### Common Error Types
+
+| Error Type | HTTP Status | Description |
+|------------|-------------|-------------|
+| `DocumentNotFoundException` | 404 | Document not found |
+| `InvalidFileTypeException` | 400 | Unsupported file format |
+| `FileSizeExceededException` | 413 | File too large (>10MB) |
+| `FileProcessingException` | 422 | Text extraction failed |
+| `EmptyDocumentException` | 400 | No extractable content |
+| `DatabaseException` | 503 | DynamoDB error |
+| `VectorStoreException` | 503 | FAISS error |
+| `EmbeddingException` | 503 | Embedding generation failed |
+| `InvalidSearchQueryException` | 400 | Invalid query parameters |
+| `ServiceUnavailableException` | 503 | External service unavailable |
 
 ---
 
 ## Rate Limits
 
-**API Gateway Limits:**
-- 100 requests/second (steady state)
-- 200 requests/second (burst)
-
-**Lambda Limits:**
-- 5-minute timeout per request
-- 3 GB memory
+- **Steady state**: 100 requests/second
+- **Burst**: 200 requests/second
+- **Lambda timeout**: 5 minutes
+- **API Gateway timeout**: 30 seconds
 
 ---
 
-## Authentication
+## Interactive Documentation
 
-**Current:** No authentication (public API)
-
-**Production Recommendations:**
-- Add API key authentication
-- Implement JWT-based auth
-- Add per-user rate limiting
+After deployment, access:
+- **Swagger UI**: `https://your-api/dev/docs`
+- **ReDoc**: `https://your-api/dev/redoc`
+- **OpenAPI JSON**: `https://your-api/dev/openapi.json`
 
 ---
 
 ## Notes
 
-**First Request After Cold Start:**
-- May timeout (30 seconds)
-- Retry after 5 seconds
-- Subsequent requests will be fast
+### First Request Timeout
+First request after cold start may timeout (30s). Retry after 5 seconds.
 
-**PDF Limitations:**
-- Some PDFs with font issues may fail
-- Scanned PDFs not supported (no OCR)
-- Workaround: Convert to TXT or DOCX
+### PDF Limitations
+Some PDFs with font issues may fail. Convert to TXT or DOCX as workaround.
 
-**Conversation History:**
-- Stored in DynamoDB
-- Persists across sessions
-- No automatic expiration (manual cleanup needed)
+### Conversation Persistence
+Conversations stored indefinitely. Manual cleanup required.
 
 ---
 
-## Testing Tips
+## Testing
 
-**1. Upload a document first:**
 ```bash
-curl -X POST https://your-api.com/dev/documents/upload \
+# 1. Health check
+curl https://your-api/dev/health/
+
+# 2. Upload document
+curl -X POST https://your-api/dev/documents/upload \
   -F "file=@test.txt"
-```
 
-**2. Search for content:**
-```bash
-curl -X POST https://your-api.com/dev/chat/ \
+# 3. Search
+curl -X POST https://your-api/dev/search/ \
   -H "Content-Type: application/json" \
-  -d '{"query": "your question here"}'
-```
+  -d '{"query": "your search query"}'
 
-**3. Check conversation history:**
-```bash
-curl https://your-api.com/dev/chat/conversations/{conversation_id}
+# 4. Chat
+curl -X POST https://your-api/dev/chat/ \
+  -H "Content-Type: application/json" \
+  -d '{"query": "your question"}'
 ```

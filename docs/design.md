@@ -1,165 +1,327 @@
-# AI-Powered Semantic Search Engine
-Detailed Design Document (6-Pager)
+# AI Semantic Search Engine - System Design
 
-**Author:** Keshav Sridhar  
-**Status:** Proposed Design  
-**Audience:** Software Development Engineers, Hiring Managers  
-**Last Updated:** 28 Jan 2026
+**Status**: Implemented  
+**Last Updated**: January 2026
 
 ## 1. Executive Summary
-This document proposes the design of a production-grade AI-powered semantic search engine that enables users to query large unstructured document corpora using natural language. The system leverages vector embeddings and Retrieval-Augmented Generation (RAG) to return accurate, context-aware, and explainable answers grounded in source documents.
 
-The design prioritizes strong software engineering fundamentals: stateless services, horizontal scalability, secure infrastructure, and clear separation of concerns. Managed AI services are used to minimize operational overhead while allowing future extensibility through modular abstractions.
+A serverless semantic search engine with RAG capabilities that enables natural language queries over document collections. Users can upload documents (PDF, DOCX, TXT), perform semantic search, and receive AI-generated answers grounded in their content.
 
-## 2. Customer Problem
-Users interacting with large document repositories often struggle to find relevant information using traditional keyword-based search systems. Keyword search fails to capture semantic meaning, intent, and contextual relevance, resulting in:
-- Low result relevance
-- High cognitive effort to locate answers
-- Poor user experience for exploratory queries
+**Key Technologies**: FastAPI, AWS Lambda, DynamoDB, S3, FAISS, sentence-transformers, AWS Bedrock (Claude 3.5 Haiku)
 
-Modern users expect systems to understand natural language questions and provide concise, grounded answers rather than lists of documents. The system aims to bridge this gap by combining semantic retrieval with controlled language generation.
+## 2. Problem Statement
 
-## 3. Goals
-The primary goals of this system are:
-- Enable semantic search over unstructured text documents
-- Generate answers strictly grounded in retrieved document context (RAG)
-- Maintain stateless, horizontally scalable backend services
-- Ensure secure-by-default infrastructure and CI/CD
-- Provide extensibility for future AI enhancements such as reranking and multi-agent workflows
+Traditional keyword search fails to understand semantic meaning, intent, and context. Users need:
+- Natural language queries that understand intent
+- Direct answers instead of document lists
+- Source attribution for verification
+- Conversational follow-up questions
 
-## 4. Non-Goals
-The following are explicitly out of scope:
-- Training or fine-tuning foundation models
-- Real-time streaming document ingestion
-- Frontend or UI development
-- Use of proprietary, internal, or sensitive datasets
-- Multi-modal (image/audio) support in the initial version
+This system bridges the gap using semantic embeddings and RAG to provide accurate, grounded responses.
 
-## 5. Assumptions and Constraints
-- Documents are primarily text-based and pre-cleaned
-- Expected query load is ≤ 100 QPS
-- Target P95 latency is under 2 seconds
-- Managed AI services are preferred over self-hosted models
-- Cost efficiency is prioritized over ultra-low latency
+## 3. Architecture
 
-## 6. High-Level Architecture
-The system is composed of stateless backend services fronted by an API Gateway. A Search API orchestrates document retrieval and answer generation by interacting with a vector store and managed AI services.
+### High-Level Design
 
-High-level components include:
-- API Gateway for request routing and throttling
-- Search API (FastAPI) for orchestration
-- Ingestion pipeline for indexing documents
-- Vector store for semantic similarity search
-- AWS Bedrock for embeddings and LLM inference
-- Object storage (S3) for document persistence
+```
+Client (HTTP/HTTPS)
+    ↓
+API Gateway (REST API)
+    ├─ Throttling: 100 req/s steady, 200 req/s burst
+    └─ Timeout: 30 seconds
+    ↓
+Lambda Function (Docker, 3GB memory, 5min timeout)
+    ├─ FastAPI application
+    ├─ sentence-transformers (all-MiniLM-L6-v2)
+    └─ FAISS vector store
+    ↓
+├─ DynamoDB (3 tables)
+│   ├─ documents (metadata)
+│   ├─ chunks (text chunks)
+│   └─ conversations (chat history)
+│
+├─ S3 Bucket
+│   ├─ Uploaded files
+│   └─ FAISS index + metadata
+│
+└─ AWS Bedrock
+    └─ Claude 3.5 Haiku (LLM)
+```
 
-## 7. Data Flow
+### Component Responsibilities
 
-### Document Ingestion Flow
-1. Document is uploaded to object storage
-2. Text is extracted and normalized
-3. Document is chunked into overlapping segments
-4. Embeddings are generated for each chunk
-5. Vectors and metadata are stored in the vector database
+**API Gateway**: Request routing, throttling, CORS, logging
 
-### Query Flow
-1. User submits a natural language query
-2. Query embedding is generated
-3. Top-K similar vectors are retrieved
-4. Relevant context is assembled
-5. LLM generates a grounded response
-6. Answer and source references are returned
+**Lambda**: Stateless processing, text extraction, chunking, embeddings, vector search, LLM orchestration
 
-## 8. API Contracts
+**DynamoDB**: Document metadata, text chunks, conversation history (pay-per-request billing)
 
-### POST /ingest
-**Request:**
-- Input: S3 URI of document
-- Behavior: Asynchronously indexes the document
-- Output: Ingestion job status
+**S3**: File storage, FAISS index persistence
 
-### POST /search
-**Request:**
-- Input: Natural language query, optional top-K
-- Behavior: Executes semantic retrieval and RAG pipeline
-- Output: Generated answer and document references
+**Bedrock**: LLM inference for answer generation
 
-## 9. Core Component Design
+## 4. Data Flow
 
-### Document Chunker
-Splits documents into fixed-size overlapping chunks to preserve semantic continuity. Chunk metadata includes document ID and offset for traceability.
+### Document Ingestion
+
+1. Client uploads file (PDF/DOCX/TXT)
+2. Lambda extracts text (pdfplumber, python-docx)
+3. Text chunked (300 chars, 50 char overlap)
+4. Generate embeddings (384-dim vectors)
+5. Store in DynamoDB + FAISS + S3
+6. Return document_id
+
+### Semantic Search
+
+1. Client sends query
+2. Generate query embedding
+3. FAISS similarity search (top-K)
+4. Fetch chunk metadata from DynamoDB
+5. Return ranked results with scores
+
+### RAG Chat
+
+1. Client sends query + optional conversation_id
+2. Retrieve relevant chunks (semantic search)
+3. Load conversation history (if exists)
+4. Build prompt: context + history + query
+5. Call Bedrock (Claude 3.5 Haiku)
+6. Save conversation to DynamoDB
+7. Return answer + sources + conversation_id
+
+## 5. Core Components
+
+### Text Chunker
+- **Algorithm**: Fixed 300-char chunks with 50-char overlap
+- **Rationale**: Balances context vs. granularity, prevents sentence splitting
+- **Output**: chunk_id, document_id, content, index
 
 ### Embedding Service
-Abstracts calls to managed embedding models. Handles batching, retries, and throttling to ensure resilience and model portability.
+- **Model**: sentence-transformers/all-MiniLM-L6-v2 (384-dim, ~80MB)
+- **Pattern**: Singleton (load once per Lambda container)
+- **Cache**: In-memory for container lifetime (~15-30 min)
 
 ### Vector Store
-Stores embeddings and supports approximate nearest-neighbor similarity search. Metadata filtering enables source attribution and future access control.
+- **Index**: FAISS IndexFlatL2 (exact L2 distance)
+- **Persistence**: In-memory + S3 backup
+- **Trade-off**: Accuracy over speed (suitable for <100K vectors)
 
-### Retriever
-Coordinates query embedding generation and vector lookup. Applies ranking and filtering before returning candidate context.
+### Bedrock Service
+- **Model**: Claude 3.5 Haiku ($1/M input, $5/M output tokens)
+- **Config**: Max 1000 tokens, temperature 0.7
+- **Prompt**: System instructions + context + history + query
 
-### RAG Pipeline
-Constructs bounded prompts containing retrieved context and user queries. Explicit grounding instructions are used to minimize hallucinations.
+### Conversation Service
+- **Storage**: DynamoDB (messages as list for atomic updates)
+- **Context**: Last 10 messages included in LLM prompts
+- **Expiration**: Manual cleanup (no TTL configured)
 
-## 10. Data Model
-Each indexed document chunk contains:
-- Document ID
-- Chunk ID
-- Raw text content
-- Embedding vector
-- Creation timestamp
+## 6. API Design
 
-Metadata supports traceability, debugging, and source citation in responses.
+### Endpoints
 
-## 11. Scalability and Performance
-The system is designed to scale horizontally through stateless compute. Vector search workloads are read-heavy and optimized using approximate indexing techniques. Ingestion is handled asynchronously to isolate write-heavy operations from query latency.
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/health/` | Health check |
+| POST | `/documents/` | Ingest from JSON |
+| POST | `/documents/upload` | Upload file |
+| GET | `/documents/{id}` | Get document |
+| DELETE | `/documents/{id}` | Delete document |
+| POST | `/search/` | Semantic search |
+| POST | `/chat/` | RAG Q&A |
+| GET | `/chat/conversations/{id}` | Get history |
 
-## 12. Reliability and Fault Tolerance
-- External service calls use retries with exponential backoff
-- Partial failures are isolated to prevent cascading outages
-- Graceful degradation is applied when no relevant context is found
-- Ingestion operations are idempotent to support retries
+### Error Response Format
 
-## 13. Security Design
-- IAM roles are used exclusively (no static credentials)
-- Principle of least privilege is enforced
-- CI/CD pipelines authenticate using OIDC
-- Object storage is private by default
-- No sensitive or personal data is stored
+```json
+{
+  "error": {
+    "type": "ErrorType",
+    "message": "Human-readable message",
+    "details": {"key": "value"}
+  }
+}
+```
 
-## 14. CI/CD Design
+## 7. Infrastructure as Code
 
-### Continuous Integration
-- Linting and formatting checks
-- Unit tests for core logic
-- Static validation of infrastructure code
+### AWS CDK Stack
 
-### Continuous Deployment
-- GitHub Actions assumes AWS role via OIDC
-- AWS CDK synthesizes and deploys infrastructure
-- Automated rollback on deployment failure
+**DynamoDB Tables**:
+- Pay-per-request billing
+- DESTROY removal policy
+- No point-in-time recovery
 
-## 15. Cost Considerations
-Primary cost drivers include:
-- LLM inference requests
-- Embedding generation
-- Vector database storage
+**S3 Bucket**:
+- AES-256 encryption
+- 90-day lifecycle policy
+- Public access blocked
 
-Costs are controlled through:
-- Embedding caching
-- Chunk size optimization
-- Serverless compute to eliminate idle cost
+**Lambda**:
+- Python 3.12 Docker container
+- 3GB memory, 5-minute timeout
+- Environment variables for config
 
-## 16. Risks and Mitigations
-- **LLM hallucination:** Mitigated through strict context bounding
-- **Cost growth:** Controlled via caching and pruning strategies
-- **Vendor dependency:** Reduced through abstraction layers
-- **Vector DB growth:** Managed with lifecycle policies
+**API Gateway**:
+- REST API with /dev stage
+- Throttling configured
+- CloudWatch logging enabled
 
-## 17. Alternatives Considered
-- **Fine-tuning foundation models:** Rejected due to cost and complexity
-- **Self-hosted GPU infrastructure:** Rejected due to operational overhead
-- **Keyword-based search:** Rejected due to poor relevance
+**IAM**:
+- Least privilege permissions
+- DynamoDB read/write
+- S3 read/write
+- Bedrock InvokeModel
 
-## 18. Conclusion
-This design outlines a robust, scalable, and extensible AI-powered semantic search system. It demonstrates strong backend engineering fundamentals while incorporating modern AI techniques. The solution is suitable as a professional portfolio artifact and aligns with industry best practices for production AI systems.
+### Deployment
+
+**GitHub Actions** (OIDC authentication):
+1. Checkout code
+2. Setup Node.js + Python
+3. Configure AWS credentials (no static keys)
+4. Install dependencies
+5. CDK deploy
+
+**Trigger**: Push to main branch or manual dispatch
+
+**Duration**: ~15-20 minutes (Docker build + deploy)
+
+## 8. Performance & Scalability
+
+### Performance Characteristics
+
+**Warm Lambda**:
+- Document upload: 500-1000ms
+- Search: 100-300ms
+- Chat: 1-2 seconds
+
+**Cold Lambda**:
+- Model loading: ~20 seconds
+- First request: May timeout (30s limit)
+- Workaround: Retry after 5 seconds
+
+### Scalability
+
+**Auto-scaling**:
+- Lambda: Up to 1000 concurrent executions
+- DynamoDB: Pay-per-request (no limits)
+- API Gateway: 10,000 req/s regional limit
+
+**Bottlenecks**:
+- FAISS: O(n) search (acceptable for <100K vectors)
+- Bedrock: Model-specific rate limits
+- Cold starts: ~20-30 seconds
+
+## 9. Security
+
+### Authentication
+- **Current**: None (public API)
+- **Production**: API keys, JWT, per-user rate limiting
+
+### IAM
+- No static credentials (OIDC for CI/CD)
+- Lambda uses IAM role
+- Least privilege permissions
+
+### Data Security
+- S3: AES-256 encryption at rest
+- DynamoDB: AWS managed encryption
+- API Gateway: HTTPS only (TLS 1.2+)
+- No PII stored
+
+## 10. Cost Analysis
+
+### AWS Free Tier
+
+| Service | Free Tier | Typical Usage | Cost |
+|---------|-----------|---------------|------|
+| Lambda | 1M req/month | 3K req/month | $0 |
+| API Gateway | 1M req/month | 3K req/month | $0 |
+| DynamoDB | 25GB storage | <1GB | $0 |
+| S3 | 5GB storage | <1GB | $0 |
+| Bedrock | None | 100 queries | $0.15 |
+
+**Total**: ~$0.15-$5/month depending on usage
+
+### Cost Optimization
+
+- Serverless (no idle costs)
+- Pay-per-request DynamoDB
+- 7-day log retention
+- S3 lifecycle policies
+- Efficient chunking
+
+## 11. Known Limitations
+
+### 1. Cold Start Timeout
+- **Issue**: First request after 15min inactivity times out
+- **Cause**: Model loading (~20s) + API Gateway 30s limit
+- **Workaround**: Retry after 5 seconds
+- **Solution**: Provisioned concurrency or EventBridge warming
+
+### 2. PDF Extraction
+- **Issue**: Some PDFs fail extraction
+- **Cause**: Font encoding issues, scanned PDFs
+- **Workaround**: Convert to TXT or DOCX
+- **Solution**: AWS Textract integration
+
+### 3. No Authentication
+- **Issue**: Public API
+- **Impact**: No user tracking or rate limiting
+- **Acceptable**: Demo/portfolio projects
+- **Solution**: API keys or JWT
+
+### 4. FAISS Scalability
+- **Current**: Exact search, O(n) complexity
+- **Limit**: Performance degrades >100K vectors
+- **Solution**: Approximate search or managed vector DB
+
+## 12. Design Decisions
+
+### Serverless vs. Container
+- **Choice**: Serverless (Lambda)
+- **Rationale**: Zero idle costs, auto-scaling, minimal ops
+- **Trade-off**: Cold starts, 30s API Gateway timeout
+
+### FAISS vs. Managed Vector DB
+- **Choice**: FAISS (in-memory + S3)
+- **Rationale**: Zero cost, simple deployment
+- **Trade-off**: Must rebuild on ingestion, limited scalability
+
+### Bedrock vs. OpenAI
+- **Choice**: AWS Bedrock
+- **Rationale**: IAM auth, same AWS account, competitive pricing
+- **Trade-off**: Requires model access request
+
+### DynamoDB vs. RDS
+- **Choice**: DynamoDB
+- **Rationale**: Serverless, pay-per-request, auto-scaling
+- **Trade-off**: No complex queries, eventual consistency
+
+## 13. Future Enhancements
+
+**Short-term**:
+- Streamlit frontend
+- Query caching
+- Conversation expiration (TTL)
+
+**Medium-term**:
+- API key authentication
+- Result reranking
+- Document management UI
+
+**Long-term**:
+- Multi-modal support (images, OCR)
+- Advanced RAG (query decomposition, HyDE)
+- Managed vector DB migration
+- Multi-tenancy
+
+## 14. Conclusion
+
+This system demonstrates production-grade engineering practices: serverless architecture, infrastructure-as-code, comprehensive error handling, and secure-by-default design. The solution balances cost efficiency with functionality, making it suitable for portfolio demonstration while being extensible for production use.
+
+**Key Strengths**:
+- Stateless, horizontally scalable
+- Cost-effective (<$5/month)
+- Secure (no credentials, IAM-only)
+- Well-documented and maintainable

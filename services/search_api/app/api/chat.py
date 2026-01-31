@@ -83,9 +83,20 @@ def chat(
     # Step 5: Return response
     logger.info(f"Chat completed successfully (answer length: {len(answer)} chars)")
     
+    # Convert SearchResult objects to dictionaries for response
+    sources_dict = [
+        {
+            "document_id": chunk.document_id,
+            "document_title": chunk.document_title,
+            "content": chunk.content,
+            "score": chunk.score
+        }
+        for chunk in context_chunks
+    ]
+    
     return ChatResponse(
         answer=answer,
         conversation_id=conversation_id,
-        sources=context_chunks,
+        sources=sources_dict,
         model=model
     )

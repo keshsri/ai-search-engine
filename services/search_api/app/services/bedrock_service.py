@@ -68,7 +68,7 @@ class BedrockService:
         
         # Format context chunks
         context_text = "\n\n".join([
-            f"[Document: {chunk.get('document_title', 'Unknown')}]\n{chunk['content']}"
+            f"[Document: {chunk.document_title}]\n{chunk.content}"
             for chunk in context_chunks
         ])
         

@@ -36,7 +36,9 @@ class SearchService:
                 document_id=r["document_id"],
                 chunk_id=r["chunk_id"],
                 index=r["index"],
-                content=r["content"]
+                content=r["content"],
+                document_title=r.get("document_title", "Unknown"),
+                score=r.get("score", 0.0)
             )
             for r in results
         ]
