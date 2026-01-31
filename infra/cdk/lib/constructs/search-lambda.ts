@@ -75,6 +75,8 @@ export class SearchLambda extends Construct {
         LOG_LEVEL: 'INFO',
         APP_NAME: 'AI Semantic Search API',
         
+        // API Gateway stage for docs
+        API_GATEWAY_STAGE: 'dev',
       },
       logGroup: new logs.LogGroup(this, 'LogGroup', {
         logGroupName: `/aws/lambda/ai-search-api`,

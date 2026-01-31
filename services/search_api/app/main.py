@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
+import os
 
 from app.api import health, documents, search
 from app.core.logging import setup_logging
@@ -36,10 +37,17 @@ from app.core.error_handlers import (
 # Setup logging
 setup_logging()
 
+# Detect if running in Lambda behind API Gateway
+root_path = ""
+if os.environ.get('AWS_LAMBDA_FUNCTION_NAME'):
+    # API Gateway adds /dev (or stage name) prefix
+    root_path = f"/{os.environ.get('API_GATEWAY_STAGE', 'dev')}"
+
 app = FastAPI(
     title=settings.APP_NAME,
     description="AI-powered semantic search engine using RAG",
-    version="0.1.0"
+    version="0.1.0",
+    root_path=root_path,  # Fix for API Gateway stage prefix
 )
 
 # ---- Exception Handlers ----
