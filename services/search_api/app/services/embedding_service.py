@@ -1,7 +1,10 @@
-from sentence_transformers import SentenceTransformer
 import numpy as np
-from typing import List
+from typing import List, TYPE_CHECKING
 import logging
+
+# Lazy import to avoid slow PyTorch import during Lambda init
+if TYPE_CHECKING:
+    from sentence_transformers import SentenceTransformer
 
 from app.core.exceptions import EmbeddingException
 
@@ -14,6 +17,8 @@ class EmbeddingService:
     def __init__(self):
         logger.info("Initializing EmbeddingService with model: all-MiniLM-L6-v2")
         try:
+            # Import here to avoid slow init
+            from sentence_transformers import SentenceTransformer
             self.model = SentenceTransformer("all-MiniLM-L6-v2")
             logger.info(f"Model loaded successfully. Embedding dimension: {self.model.get_sentence_embedding_dimension()}")
         except Exception as e:
