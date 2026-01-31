@@ -24,6 +24,8 @@ class DocumentService:
 
     def ingest(self, document: Document) -> Document:
         document.id = document.id or str(uuid.uuid4())
+        logger.info(f"Starting document ingestion: document_id={document.id}, title='{document.title}'")
+        logger.debug(f"Document content length: {len(document.content)} characters")
 
         item = {
             "document_id": document.id,
@@ -33,21 +35,36 @@ class DocumentService:
             "created_at": document.created_at.isoformat()
         }
 
-        self.db.table.put_item(Item=item)
+        try:
+            self.db.table.put_item(Item=item)
+            logger.info(f"Saved document metadata to DynamoDB: document_id={document.id}")
+        except Exception as e:
+            logger.error(f"Failed to save document to DynamoDB: document_id={document.id}, error={str(e)}")
+            raise
 
+        logger.debug(f"Starting chunking for document_id={document.id}")
         chunks = self.chunker.chunk_text(document.id, document.content)
         logger.info(f"Created {len(chunks)} chunks for document {document.id}")
 
         if not chunks:
+            logger.warning(f"No chunks created for document_id={document.id}, skipping embedding and vector storage")
             return document
 
-        self.chunks_db.save_chunks(chunks)
+        try:
+            self.chunks_db.save_chunks(chunks)
+            logger.info(f"Saved {len(chunks)} chunks to DynamoDB for document_id={document.id}")
+        except Exception as e:
+            logger.error(f"Failed to save chunks to DynamoDB: document_id={document.id}, error={str(e)}")
+            raise
 
+        logger.debug(f"Generating embeddings for {len(chunks)} chunks")
         texts = [chunk.content for chunk in chunks]
         vectors = self.embedding_service.embed(texts)
+        logger.info(f"Generated {len(vectors)} embeddings for document_id={document.id}")
         
         # Convert to numpy array for FAISS
         vectors_np = np.array(vectors).astype('float32')
+        logger.debug(f"Converted embeddings to numpy array: shape={vectors_np.shape}")
 
         metadata = [
             {
@@ -60,21 +77,33 @@ class DocumentService:
         ]
 
         # Store in FAISS
-        self.vector_store.add(vectors_np, metadata)
+        try:
+            self.vector_store.add(vectors_np, metadata)
+            logger.info(f"Stored {len(vectors)} vectors in FAISS for document_id={document.id}")
+        except Exception as e:
+            logger.error(f"Failed to store vectors in FAISS: document_id={document.id}, error={str(e)}")
+            raise
 
-        logger.info(f"Stored {len(vectors)} vectors in FAISS")
-
+        logger.info(f"Successfully completed ingestion for document_id={document.id}")
         return document
 
     def get_by_id(self, document_id: str) -> Optional[Document]:
-        response = self.db.table.get_item(
-            Key={"document_id": document_id}
-        )
+        logger.debug(f"Retrieving document from DynamoDB: document_id={document_id}")
+        
+        try:
+            response = self.db.table.get_item(
+                Key={"document_id": document_id}
+            )
+        except Exception as e:
+            logger.error(f"Failed to retrieve document from DynamoDB: document_id={document_id}, error={str(e)}")
+            raise
 
         item = response.get("Item")
         if not item:
+            logger.warning(f"Document not found: document_id={document_id}")
             return None
 
+        logger.info(f"Successfully retrieved document: document_id={document_id}, title='{item.get('title')}'")
         return Document(
             id=item["document_id"],
             title=item["title"],

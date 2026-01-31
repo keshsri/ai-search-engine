@@ -221,3 +221,6 @@ cdk.out/
 # FAISS vector store data
 faiss.index
 faiss_meta.json
+
+# Uploaded files
+uploads/

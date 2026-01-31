@@ -28,12 +28,15 @@ class ChunkingService:
         :param text: Raw document text
         :return: List of Chunk objects
         """
+        logger.debug(f"Starting chunking for document_id={document_id}, text_length={len(text)} chars")
 
         if not text or not text.strip():
             logger.warning(f"Empty text received for document_id={document_id}. Skipping chunking.")
             return []
 
+        logger.debug(f"Tokenizing text into sentences for document_id={document_id}")
         sentences = sent_tokenize(text)
+        logger.debug(f"Found {len(sentences)} sentences in document_id={document_id}")
 
         chunks: List[Chunk] = []
         current_chunk_sentences: List[str] = []
@@ -45,11 +48,13 @@ class ChunkingService:
 
             # If adding this sentence exceeds chunk size, flush current chunk
             if current_word_count + sentence_word_count > self.chunk_size:
+                chunk_content = " ".join(current_chunk_sentences)
+                logger.debug(f"Creating chunk {index} for document_id={document_id}: {current_word_count} words, {len(current_chunk_sentences)} sentences")
                 chunks.append(
                     Chunk(
                         chunk_id=str(uuid.uuid4()),
                         document_id=document_id,
-                        content=" ".join(current_chunk_sentences),
+                        content=chunk_content,
                         index=index,
                     )
                 )
@@ -62,15 +67,17 @@ class ChunkingService:
 
         # Flush remaining sentences as final chunk
         if current_chunk_sentences:
+            chunk_content = " ".join(current_chunk_sentences)
+            logger.debug(f"Creating final chunk {index} for document_id={document_id}: {current_word_count} words, {len(current_chunk_sentences)} sentences")
             chunks.append(
                 Chunk(
                     chunk_id=str(uuid.uuid4()),
                     document_id=document_id,
-                    content=" ".join(current_chunk_sentences),
+                    content=chunk_content,
                     index=index,
                 )
             )
 
-        logger.info(f"Chunked document_id={document_id} into {len(chunks)} chunks")
+        logger.info(f"Chunked document_id={document_id} into {len(chunks)} chunks (target size: {self.chunk_size} words)")
 
         return chunks
