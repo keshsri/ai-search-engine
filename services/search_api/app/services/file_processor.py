@@ -1,6 +1,6 @@
 import io
 from typing import BinaryIO
-import PyPDF2
+import pdfplumber
 from docx import Document as DocxDocument
 import logging
 
@@ -53,7 +53,7 @@ class FileProcessor:
     
     def _extract_from_pdf(self, file: BinaryIO) -> str:
         """
-        Extract text from PDF file.
+        Extract text from PDF file using pdfplumber.
         
         Args:
             file: PDF file object
@@ -64,34 +64,34 @@ class FileProcessor:
         Raises:
             FileProcessingException: If PDF extraction fails
         """
-        logger.debug("Extracting text from PDF")
+        logger.debug("Extracting text from PDF using pdfplumber")
         
         try:
-            # Create PDF reader
-            pdf_reader = PyPDF2.PdfReader(file)
-            num_pages = len(pdf_reader.pages)
-            logger.info(f"PDF has {num_pages} pages")
-            
-            # Extract text from all pages
-            text_parts = []
-            for i, page in enumerate(pdf_reader.pages, 1):
-                text = page.extract_text()
-                if text:
-                    text_parts.append(text)
-                    logger.debug(f"Extracted text from page {i}/{num_pages} ({len(text)} chars)")
-            
-            # Combine all pages
-            full_text = "\n\n".join(text_parts)
-            logger.info(f"Successfully extracted {len(full_text)} characters from PDF")
-            
-            if not full_text.strip():
-                logger.warning("PDF extraction resulted in empty text")
-                raise FileProcessingException(
-                    message="PDF contains no extractable text",
-                    details={"pages": num_pages}
-                )
-            
-            return self._clean_text(full_text)
+            # Open PDF with pdfplumber
+            with pdfplumber.open(file) as pdf:
+                num_pages = len(pdf.pages)
+                logger.info(f"PDF has {num_pages} pages")
+                
+                # Extract text from all pages
+                text_parts = []
+                for i, page in enumerate(pdf.pages, 1):
+                    text = page.extract_text()
+                    if text:
+                        text_parts.append(text)
+                        logger.debug(f"Extracted text from page {i}/{num_pages} ({len(text)} chars)")
+                
+                # Combine all pages
+                full_text = "\n\n".join(text_parts)
+                logger.info(f"Successfully extracted {len(full_text)} characters from PDF")
+                
+                if not full_text.strip():
+                    logger.warning("PDF extraction resulted in empty text")
+                    raise FileProcessingException(
+                        message="PDF contains no extractable text",
+                        details={"pages": num_pages}
+                    )
+                
+                return self._clean_text(full_text)
         
         except FileProcessingException:
             raise
