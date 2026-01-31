@@ -64,13 +64,13 @@ class FileProcessor:
         Raises:
             FileProcessingException: If PDF extraction fails
         """
-        logger.debug("Extracting text from PDF using pdfplumber")
+        logger.info("Extracting text from PDF using pdfplumber library")
         
         try:
             # Open PDF with pdfplumber
             with pdfplumber.open(file) as pdf:
                 num_pages = len(pdf.pages)
-                logger.info(f"PDF has {num_pages} pages")
+                logger.info(f"pdfplumber: PDF has {num_pages} pages")
                 
                 # Extract text from all pages
                 text_parts = []
@@ -78,17 +78,17 @@ class FileProcessor:
                     text = page.extract_text()
                     if text:
                         text_parts.append(text)
-                        logger.debug(f"Extracted text from page {i}/{num_pages} ({len(text)} chars)")
+                        logger.debug(f"pdfplumber: Extracted text from page {i}/{num_pages} ({len(text)} chars)")
                 
                 # Combine all pages
                 full_text = "\n\n".join(text_parts)
-                logger.info(f"Successfully extracted {len(full_text)} characters from PDF")
+                logger.info(f"pdfplumber: Successfully extracted {len(full_text)} characters from PDF")
                 
                 if not full_text.strip():
-                    logger.warning("PDF extraction resulted in empty text")
+                    logger.warning("pdfplumber: PDF extraction resulted in empty text")
                     raise FileProcessingException(
-                        message="PDF contains no extractable text",
-                        details={"pages": num_pages}
+                        message="PDF contains no extractable text (pdfplumber)",
+                        details={"pages": num_pages, "library": "pdfplumber"}
                     )
                 
                 return self._clean_text(full_text)
@@ -96,10 +96,10 @@ class FileProcessor:
         except FileProcessingException:
             raise
         except Exception as e:
-            logger.error(f"Error extracting text from PDF: {str(e)}")
+            logger.error(f"pdfplumber: Error extracting text from PDF: {str(e)}")
             raise FileProcessingException(
-                message="Failed to extract text from PDF",
-                details={"error": str(e)}
+                message="Failed to extract text from PDF using pdfplumber",
+                details={"error": str(e), "library": "pdfplumber"}
             )
     
     def _extract_from_docx(self, file: BinaryIO) -> str:
