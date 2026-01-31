@@ -1,0 +1,26 @@
+# Use AWS Lambda Python base image
+FROM public.ecr.aws/lambda/python:3.12
+
+# Set working directory
+WORKDIR ${LAMBDA_TASK_ROOT}
+
+# Copy requirements first for better caching
+COPY requirements.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Download NLTK data
+RUN python -c "import nltk; nltk.download('punkt_tab', quiet=True)"
+
+# Pre-download the sentence-transformers model to reduce cold start time
+RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')"
+
+# Copy application code
+COPY app/ ${LAMBDA_TASK_ROOT}/app/
+
+# Set Python path
+ENV PYTHONPATH=${LAMBDA_TASK_ROOT}
+
+# Lambda handler
+CMD ["app.lambda_handler.handler"]
