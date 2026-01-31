@@ -14,6 +14,11 @@ RUN pip install --no-cache-dir -r requirements.txt && \
 # Set NLTK data path to /tmp (writable in Lambda)
 ENV NLTK_DATA=/tmp/nltk_data
 
+# Set transformers/sentence-transformers cache to /tmp
+ENV TRANSFORMERS_CACHE=/tmp/transformers_cache
+ENV SENTENCE_TRANSFORMERS_HOME=/tmp/sentence_transformers_cache
+ENV HF_HOME=/tmp/huggingface_cache
+
 # Download NLTK data to /tmp
 RUN mkdir -p /tmp/nltk_data && \
     python -c "import nltk; nltk.data.path.append('/tmp/nltk_data'); nltk.download('punkt_tab', download_dir='/tmp/nltk_data', quiet=True)"
