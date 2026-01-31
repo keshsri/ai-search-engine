@@ -14,18 +14,17 @@ RUN pip install --no-cache-dir -r requirements.txt && \
 # Set NLTK data path
 ENV NLTK_DATA=/var/task/nltk_data:/tmp/nltk_data
 
-# Set transformers/sentence-transformers cache
-ENV TRANSFORMERS_CACHE=/var/task/transformers_cache
-ENV SENTENCE_TRANSFORMERS_HOME=/var/task/sentence_transformers_cache
-ENV HF_HOME=/var/task/huggingface_cache
+# Set transformers/sentence-transformers cache to /tmp (writable in Lambda)
+ENV TRANSFORMERS_CACHE=/tmp/transformers_cache
+ENV SENTENCE_TRANSFORMERS_HOME=/tmp/sentence_transformers_cache
+ENV HF_HOME=/tmp/huggingface_cache
 
 # Download NLTK data to permanent location in image
 RUN mkdir -p /var/task/nltk_data && \
     python -c "import nltk; nltk.download('punkt_tab', download_dir='/var/task/nltk_data', quiet=True)"
 
-# Pre-download sentence-transformers model to permanent location
-RUN mkdir -p /var/task/sentence_transformers_cache && \
-    python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2', cache_folder='/var/task/sentence_transformers_cache')"
+# Note: sentence-transformers model will be downloaded on first Lambda invocation
+# and cached in /tmp for subsequent requests within the same container lifecycle
 
 # Copy application code
 COPY app/ ${LAMBDA_TASK_ROOT}/app/
