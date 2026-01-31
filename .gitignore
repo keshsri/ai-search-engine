@@ -217,3 +217,7 @@ __marimo__/
 node_modules/
 cdk.out/
 .cdk.staging/
+
+# FAISS vector store data
+faiss.index
+faiss_meta.json
