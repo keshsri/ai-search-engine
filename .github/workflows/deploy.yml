@@ -49,10 +49,6 @@ jobs:
         working-directory: infra/cdk
         run: npm install
       
-      - name: Install Python dependencies
-        working-directory: services/search_api
-        run: pip install -r requirements.txt
-      
       - name: CDK Deploy
         working-directory: infra/cdk
         run: |
