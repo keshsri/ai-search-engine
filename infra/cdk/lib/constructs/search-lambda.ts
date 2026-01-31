@@ -3,6 +3,7 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as s3 from 'aws-cdk-lib/aws-s3';
+import * as iam from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 import * as path from 'path';
 
@@ -16,6 +17,11 @@ export interface SearchLambdaProps {
    * DynamoDB chunks table
    */
   chunksTable: dynamodb.Table;
+
+  /**
+   * DynamoDB conversations table
+   */
+  conversationsTable: dynamodb.Table;
 
   /**
    * S3 bucket for documents and FAISS index
@@ -64,6 +70,7 @@ export class SearchLambda extends Construct {
         // DynamoDB configuration
         DYNAMODB_DOCUMENT_TABLE: props.documentsTable.tableName,
         CHUNKS_TABLE_NAME: props.chunksTable.tableName,
+        CONVERSATIONS_TABLE_NAME: props.conversationsTable.tableName,
         
         // S3 configuration
         DOCUMENTS_BUCKET: props.documentsBucket.bucketName,
@@ -77,6 +84,9 @@ export class SearchLambda extends Construct {
         
         // API Gateway stage for docs
         API_GATEWAY_STAGE: 'dev',
+        
+        // Bedrock configuration
+        BEDROCK_MODEL_ID: 'anthropic.claude-3-5-haiku-20241022-v1:0',
       },
       logGroup: new logs.LogGroup(this, 'LogGroup', {
         logGroupName: `/aws/lambda/ai-search-api`,
@@ -88,7 +98,18 @@ export class SearchLambda extends Construct {
     // Grant permissions
     props.documentsTable.grantReadWriteData(this.function);
     props.chunksTable.grantReadWriteData(this.function);
+    props.conversationsTable.grantReadWriteData(this.function);
     props.documentsBucket.grantReadWrite(this.function);
+
+    // Grant Bedrock permissions
+    this.function.addToRolePolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: [
+        'bedrock:InvokeModel',
+        'bedrock:InvokeModelWithResponseStream',
+      ],
+      resources: ['*'], // Allow all Bedrock models
+    }));
 
     // Outputs
     new cdk.CfnOutput(this, 'FunctionName', {

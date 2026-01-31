@@ -9,6 +9,7 @@ export interface DynamoDBTablesProps {
 export class DynamoDBTables extends Construct {
   public readonly documentsTable: dynamodb.Table;
   public readonly chunksTable: dynamodb.Table;
+  public readonly conversationsTable: dynamodb.Table;
 
   constructor(scope: Construct, id: string, props?: DynamoDBTablesProps) {
     super(scope, id);
@@ -47,6 +48,20 @@ export class DynamoDBTables extends Construct {
       },
     });
 
+    // Conversations Table - stores chat conversation history
+    this.conversationsTable = new dynamodb.Table(this, 'ConversationsTable', {
+      tableName: 'conversations',
+      partitionKey: {
+        name: 'conversation_id',
+        type: dynamodb.AttributeType.STRING,
+      },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: removalPolicy,
+      pointInTimeRecoverySpecification: {
+        pointInTimeRecoveryEnabled: false,
+      },
+    });
+
     // Outputs
     new cdk.CfnOutput(this, 'DocumentsTableName', {
       value: this.documentsTable.tableName,
@@ -58,6 +73,12 @@ export class DynamoDBTables extends Construct {
       value: this.chunksTable.tableName,
       description: 'DynamoDB chunks table name',
       exportName: 'ChunksTableName',
+    });
+
+    new cdk.CfnOutput(this, 'ConversationsTableName', {
+      value: this.conversationsTable.tableName,
+      description: 'DynamoDB conversations table name',
+      exportName: 'ConversationsTableName',
     });
   }
 }

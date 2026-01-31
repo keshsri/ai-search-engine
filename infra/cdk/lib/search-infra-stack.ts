@@ -34,6 +34,7 @@ export class SearchInfraStack extends cdk.Stack {
     const searchLambda = new SearchLambda(this, 'SearchLambda', {
       documentsTable: dynamoTables.documentsTable,
       chunksTable: dynamoTables.chunksTable,
+      conversationsTable: dynamoTables.conversationsTable,
       documentsBucket: storageBucket.bucket,
       memorySize: 3008, // 3 GB for embedding model
       timeout: 300, // 5 minutes
