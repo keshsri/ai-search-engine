@@ -74,21 +74,35 @@ class FileProcessor:
                 
                 # Extract text from all pages
                 text_parts = []
+                empty_pages = 0
+                
                 for i, page in enumerate(pdf.pages, 1):
-                    text = page.extract_text()
-                    if text:
-                        text_parts.append(text)
-                        logger.debug(f"pdfplumber: Extracted text from page {i}/{num_pages} ({len(text)} chars)")
+                    try:
+                        text = page.extract_text()
+                        if text and text.strip():
+                            text_parts.append(text)
+                            logger.debug(f"pdfplumber: Extracted text from page {i}/{num_pages} ({len(text)} chars)")
+                        else:
+                            empty_pages += 1
+                            logger.warning(f"pdfplumber: Page {i}/{num_pages} has no extractable text")
+                    except Exception as page_error:
+                        logger.warning(f"pdfplumber: Error extracting page {i}: {str(page_error)}")
+                        empty_pages += 1
                 
                 # Combine all pages
                 full_text = "\n\n".join(text_parts)
-                logger.info(f"pdfplumber: Successfully extracted {len(full_text)} characters from PDF")
+                logger.info(f"pdfplumber: Successfully extracted {len(full_text)} characters from {len(text_parts)}/{num_pages} pages ({empty_pages} empty)")
                 
                 if not full_text.strip():
-                    logger.warning("pdfplumber: PDF extraction resulted in empty text")
+                    logger.error(f"pdfplumber: All {num_pages} pages resulted in empty text")
                     raise FileProcessingException(
-                        message="PDF contains no extractable text (pdfplumber)",
-                        details={"pages": num_pages, "library": "pdfplumber"}
+                        message="PDF contains no extractable text. This may be a scanned/image-based PDF or have font encoding issues.",
+                        details={
+                            "pages": num_pages,
+                            "empty_pages": empty_pages,
+                            "library": "pdfplumber",
+                            "suggestion": "Try a text-based PDF or use OCR for scanned documents"
+                        }
                     )
                 
                 return self._clean_text(full_text)
