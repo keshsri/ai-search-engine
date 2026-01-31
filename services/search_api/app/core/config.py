@@ -23,7 +23,8 @@ class Settings(BaseSettings):
     FAISS_TOP_K: int = 5
 
     # Bedrock / LLM
-    BEDROCK_MODEL_ID: str = "anthropic.claude-3-5-haiku-20241022-v1:0"  # Change this to switch models
+    # Use inference profile for on-demand access
+    BEDROCK_MODEL_ID: str = "us.anthropic.claude-3-5-haiku-20241022-v1:0"  # Inference profile ID
     BEDROCK_MAX_TOKENS: int = 1000
     BEDROCK_TEMPERATURE: float = 0.7
 

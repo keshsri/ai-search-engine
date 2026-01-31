@@ -85,8 +85,8 @@ export class SearchLambda extends Construct {
         // API Gateway stage for docs
         API_GATEWAY_STAGE: 'dev',
         
-        // Bedrock configuration
-        BEDROCK_MODEL_ID: 'anthropic.claude-3-5-haiku-20241022-v1:0',
+        // Bedrock configuration (use inference profile for on-demand access)
+        BEDROCK_MODEL_ID: 'us.anthropic.claude-3-5-haiku-20241022-v1:0',
       },
       logGroup: new logs.LogGroup(this, 'LogGroup', {
         logGroupName: `/aws/lambda/ai-search-api`,
