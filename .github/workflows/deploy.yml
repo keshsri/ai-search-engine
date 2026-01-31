@@ -49,8 +49,12 @@ jobs:
         working-directory: infra/cdk
         run: npm install
       
-      - name: CDK Deploy
+      - name: Delete existing stack (if exists)
         working-directory: infra/cdk
         run: |
           npm install -g aws-cdk
-          cdk deploy --require-approval never
+          cdk destroy --force || true
+      
+      - name: CDK Deploy
+        working-directory: infra/cdk
+        run: cdk deploy --require-approval never
