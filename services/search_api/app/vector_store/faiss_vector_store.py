@@ -4,8 +4,11 @@ import os
 import json
 from typing import List, Dict
 import logging
+import boto3
+from botocore.exceptions import ClientError
 
 from app.core.exceptions import VectorStoreException
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -14,13 +17,69 @@ class FAISSVectorStore:
         self.dim = dim
         self.index_path = index_path
         self.metadata_path = metadata_path
+        
+        # S3 configuration
+        self.use_s3 = os.environ.get('AWS_LAMBDA_FUNCTION_NAME') is not None
+        if self.use_s3:
+            self.s3_client = boto3.client('s3')
+            self.s3_bucket = os.environ.get('DOCUMENTS_BUCKET')
+            self.s3_index_key = os.environ.get('FAISS_INDEX_S3_KEY', 'faiss/index.faiss')
+            self.s3_metadata_key = os.environ.get('FAISS_METADATA_S3_KEY', 'faiss/metadata.json')
+            # Use /tmp for local cache in Lambda
+            self.index_path = f"/tmp/{os.path.basename(index_path)}"
+            self.metadata_path = f"/tmp/{os.path.basename(metadata_path)}"
+            logger.info(f"Running in Lambda, using S3 bucket: {self.s3_bucket}")
+        else:
+            self.s3_client = None
+            logger.info("Running locally, using local file storage")
 
-        logger.info(f"Initializing FAISSVectorStore: dim={dim}, index_path={index_path}, metadata_path={metadata_path}")
+        logger.info(f"Initializing FAISSVectorStore: dim={dim}, index_path={self.index_path}, metadata_path={self.metadata_path}")
         self.index = self._load_or_create_index()
         self.metadata = self._load_metadata()
         logger.info(f"FAISS index initialized with {self.index.ntotal} vectors and {len(self.metadata)} metadata entries")
 
+    def _download_from_s3(self, s3_key: str, local_path: str) -> bool:
+        """Download file from S3 to local path. Returns True if successful."""
+        try:
+            logger.info(f"Downloading {s3_key} from S3 bucket {self.s3_bucket} to {local_path}")
+            self.s3_client.download_file(self.s3_bucket, s3_key, local_path)
+            logger.info(f"Successfully downloaded {s3_key} from S3")
+            return True
+        except ClientError as e:
+            if e.response['Error']['Code'] == '404':
+                logger.info(f"File {s3_key} not found in S3 (first time setup)")
+                return False
+            else:
+                logger.error(f"Failed to download {s3_key} from S3: {str(e)}")
+                raise VectorStoreException(
+                    message="Failed to download from S3",
+                    details={"s3_key": s3_key, "error": str(e)}
+                )
+        except Exception as e:
+            logger.error(f"Unexpected error downloading {s3_key} from S3: {str(e)}")
+            raise VectorStoreException(
+                message="Failed to download from S3",
+                details={"s3_key": s3_key, "error": str(e)}
+            )
+
+    def _upload_to_s3(self, local_path: str, s3_key: str):
+        """Upload file from local path to S3."""
+        try:
+            logger.info(f"Uploading {local_path} to S3 bucket {self.s3_bucket} as {s3_key}")
+            self.s3_client.upload_file(local_path, self.s3_bucket, s3_key)
+            logger.info(f"Successfully uploaded {s3_key} to S3")
+        except Exception as e:
+            logger.error(f"Failed to upload {s3_key} to S3: {str(e)}")
+            raise VectorStoreException(
+                message="Failed to upload to S3",
+                details={"s3_key": s3_key, "error": str(e)}
+            )
+
     def _load_or_create_index(self):
+        # Try to load from S3 if in Lambda
+        if self.use_s3:
+            self._download_from_s3(self.s3_index_key, self.index_path)
+        
         if os.path.exists(self.index_path):
             logger.info(f"Loading existing FAISS index from {self.index_path}")
             try:
@@ -45,6 +104,10 @@ class FAISSVectorStore:
                 )
 
     def _load_metadata(self) -> List[Dict]:
+        # Try to load from S3 if in Lambda
+        if self.use_s3:
+            self._download_from_s3(self.s3_metadata_key, self.metadata_path)
+        
         if os.path.exists(self.metadata_path):
             logger.info(f"Loading metadata from {self.metadata_path}")
             try:
@@ -128,10 +191,19 @@ class FAISSVectorStore:
     def _persist(self):
         logger.debug(f"Persisting FAISS index to {self.index_path} and metadata to {self.metadata_path}")
         try:
+            # Save locally first
             faiss.write_index(self.index, self.index_path)
             with open(self.metadata_path, "w") as f:
                 json.dump(self.metadata, f, indent=2)
-            logger.info(f"Successfully persisted FAISS index ({self.index.ntotal} vectors) and {len(self.metadata)} metadata entries")
+            logger.info(f"Successfully persisted FAISS index ({self.index.ntotal} vectors) and {len(self.metadata)} metadata entries locally")
+            
+            # Upload to S3 if in Lambda
+            if self.use_s3:
+                self._upload_to_s3(self.index_path, self.s3_index_key)
+                self._upload_to_s3(self.metadata_path, self.s3_metadata_key)
+                logger.info("Successfully uploaded FAISS index and metadata to S3")
+        except VectorStoreException:
+            raise
         except Exception as e:
             logger.error(f"Failed to persist FAISS index or metadata: {str(e)}")
             raise VectorStoreException(
