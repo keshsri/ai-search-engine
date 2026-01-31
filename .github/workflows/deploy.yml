@@ -1,7 +1,10 @@
 name: Deploy to AWS
 
 on:
-  workflow_dispatch: # Manual trigger only
+  workflow_dispatch: # Manual trigger
+  push:
+    branches:
+      - main # Auto-deploy on push to main branch
 
 env:
   AWS_REGION: us-east-1
