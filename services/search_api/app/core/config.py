@@ -23,10 +23,10 @@ class Settings(BaseSettings):
     FAISS_TOP_K: int = 5
 
     # Bedrock / LLM
-    # Amazon Titan doesn't require AWS Marketplace subscription (works with any payment method)
-    # Claude models require US payment method for Marketplace subscription
-    BEDROCK_MODEL_ID: str = "amazon.titan-text-premier-v1:0"  # Amazon Titan Text Premier (32K context)
-    BEDROCK_MAX_TOKENS: int = 3000  # Premier supports up to 32K tokens
+    # Amazon Nova doesn't require AWS Marketplace subscription (works with any payment method)
+    # Nova Micro is the cheapest model on the market: $0.035/$0.14 per 1M tokens
+    BEDROCK_MODEL_ID: str = "amazon.nova-micro-v1:0"  # Amazon Nova Micro (128K context, text-only)
+    BEDROCK_MAX_TOKENS: int = 3000  # Nova Micro supports up to 5K output tokens
     BEDROCK_TEMPERATURE: float = 0.7
 
     class Config:
