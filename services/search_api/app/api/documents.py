@@ -21,6 +21,42 @@ file_processor = FileProcessor()
 file_storage = FileStorage()
 
 
+@router.get("/", response_model=list)
+def list_documents(
+    vector_store=Depends(get_vector_store)
+):
+    """
+    List all documents with their IDs and titles.
+    
+    Returns:
+        List of documents with basic metadata
+    """
+    logger.info("Listing all documents")
+    service = DocumentService(vector_store)
+    
+    # Scan DynamoDB for all documents
+    try:
+        response = service.db.table.scan()
+        documents = response.get('Items', [])
+        
+        # Format response
+        result = [
+            {
+                "document_id": doc.get("document_id"),
+                "title": doc.get("title"),
+                "created_at": doc.get("created_at"),
+                "source": doc.get("source")
+            }
+            for doc in documents
+        ]
+        
+        logger.info(f"Found {len(result)} documents")
+        return result
+    except Exception as e:
+        logger.error(f"Failed to list documents: {str(e)}")
+        raise
+
+
 @router.post("/", response_model=Document)
 def ingest_document(
     document: Document,
