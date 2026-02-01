@@ -67,6 +67,9 @@ See [AWS Deployment Guide](docs/aws-deployment.md) for detailed instructions.
 - `DELETE /documents/{id}` - Delete document and all associated data
 - `POST /search/` - Semantic search
 - `POST /chat/` - RAG-powered Q&A
+- `GET /chat/conversations/` - List all conversations
+- `GET /chat/conversations/{id}` - Get conversation with messages
+- `DELETE /chat/conversations/{id}` - Delete conversation
 
 Interactive docs available at `/docs` (Swagger UI) and `/redoc`.
 

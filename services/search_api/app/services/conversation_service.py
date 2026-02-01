@@ -144,3 +144,62 @@ class ConversationService:
         
         # Return last N messages
         return messages[-limit:] if len(messages) > limit else messages
+    
+    def list_conversations(self) -> List[Dict]:
+        """
+        List all conversations with basic metadata.
+        
+        Returns:
+            List of conversations with ID, message count, and timestamps
+        """
+        try:
+            response = self.table.scan()
+            conversations = response.get('Items', [])
+            
+            # Format response
+            result = []
+            for conv in conversations:
+                result.append({
+                    'conversation_id': conv['conversation_id'],
+                    'user_id': conv.get('user_id'),
+                    'message_count': len(conv.get('messages', [])),
+                    'created_at': conv['created_at'],
+                    'updated_at': conv['updated_at']
+                })
+            
+            # Sort by updated_at (most recent first)
+            result.sort(key=lambda x: x['updated_at'], reverse=True)
+            
+            logger.info(f"Listed {len(result)} conversations")
+            return result
+            
+        except ClientError as e:
+            logger.error(f"Failed to list conversations: {str(e)}")
+            raise DatabaseException(
+                message="Failed to list conversations",
+                details={"error": str(e)}
+            )
+    
+    def delete_conversation(self, conversation_id: str) -> bool:
+        """
+        Delete a conversation.
+        
+        Args:
+            conversation_id: Conversation ID to delete
+        
+        Returns:
+            True if deleted successfully
+        """
+        try:
+            self.table.delete_item(
+                Key={'conversation_id': conversation_id}
+            )
+            logger.info(f"Deleted conversation: {conversation_id}")
+            return True
+            
+        except ClientError as e:
+            logger.error(f"Failed to delete conversation: {str(e)}")
+            raise DatabaseException(
+                message="Failed to delete conversation",
+                details={"conversation_id": conversation_id, "error": str(e)}
+            )

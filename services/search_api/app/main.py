@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 import os
 
-from app.api import health, documents, search, chat, delete
+from app.api import health, documents, search, chat, delete, conversations
 from app.core.logging import setup_logging
 from app.core.config import settings
 from app.core.exceptions import (
@@ -70,4 +70,5 @@ app.include_router(health.router)
 app.include_router(documents.router)
 app.include_router(search.router)
 app.include_router(chat.router)
+app.include_router(conversations.router)
 app.include_router(delete.router)

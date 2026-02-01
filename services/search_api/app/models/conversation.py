@@ -35,3 +35,28 @@ class ChatResponse(BaseModel):
     conversation_id: str = Field(..., description="Conversation ID")
     sources: List[dict] = Field(..., description="Source chunks used for context")
     model: str = Field(..., description="Model used for generation")
+
+
+class ConversationListItem(BaseModel):
+    """Conversation list item with basic metadata."""
+    conversation_id: str = Field(..., description="Unique conversation ID")
+    user_id: Optional[str] = Field(None, description="User ID (optional)")
+    message_count: int = Field(..., description="Number of messages in conversation")
+    created_at: str = Field(..., description="Conversation creation time")
+    updated_at: str = Field(..., description="Last update time")
+
+
+class ConversationDetail(BaseModel):
+    """Detailed conversation with all messages."""
+    conversation_id: str = Field(..., description="Unique conversation ID")
+    user_id: Optional[str] = Field(None, description="User ID (optional)")
+    messages: List[dict] = Field(..., description="All conversation messages")
+    created_at: str = Field(..., description="Conversation creation time")
+    updated_at: str = Field(..., description="Last update time")
+
+
+class DeleteConversationResponse(BaseModel):
+    """Response for conversation deletion."""
+    conversation_id: str = Field(..., description="Deleted conversation ID")
+    deleted: bool = Field(..., description="Whether deletion was successful")
+    message: str = Field(..., description="Status message")

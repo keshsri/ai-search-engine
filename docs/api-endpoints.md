@@ -225,6 +225,84 @@ curl -X POST https://your-api/dev/chat/ \
 
 ---
 
+### List Conversations
+
+```http
+GET /chat/conversations/
+```
+
+Lists all conversations with basic metadata.
+
+**Response**:
+```json
+[
+  {
+    "conversation_id": "uuid",
+    "user_id": "anonymous",
+    "message_count": 4,
+    "created_at": "2026-02-01T12:00:00Z",
+    "updated_at": "2026-02-01T12:05:00Z"
+  }
+]
+```
+
+**Notes**:
+- Sorted by most recently updated first
+- Shows total message count (user + assistant messages)
+
+---
+
+### Get Conversation
+
+```http
+GET /chat/conversations/{conversation_id}
+```
+
+Retrieves a specific conversation with all messages.
+
+**Response**:
+```json
+{
+  "conversation_id": "uuid",
+  "user_id": "anonymous",
+  "messages": [
+    {
+      "role": "user",
+      "content": "What is Python?",
+      "timestamp": "2026-02-01T12:00:00Z"
+    },
+    {
+      "role": "assistant",
+      "content": "Python is a programming language...",
+      "timestamp": "2026-02-01T12:00:05Z"
+    }
+  ],
+  "created_at": "2026-02-01T12:00:00Z",
+  "updated_at": "2026-02-01T12:00:05Z"
+}
+```
+
+---
+
+### Delete Conversation
+
+```http
+DELETE /chat/conversations/{conversation_id}
+```
+
+Deletes a conversation and all its messages.
+
+**Response**:
+```json
+{
+  "conversation_id": "uuid",
+  "deleted": true,
+  "message": "Conversation deleted successfully"
+}
+```
+
+---
+
 ## Error Responses
 
 All errors return consistent format:
@@ -312,4 +390,13 @@ curl -X POST https://your-api/dev/chat/ \
 
 # 6. Delete document
 curl -X DELETE https://your-api/dev/documents/{document_id}
+
+# 7. List conversations
+curl https://your-api/dev/chat/conversations/
+
+# 8. Get conversation
+curl https://your-api/dev/chat/conversations/{conversation_id}
+
+# 9. Delete conversation
+curl -X DELETE https://your-api/dev/chat/conversations/{conversation_id}
 ```
