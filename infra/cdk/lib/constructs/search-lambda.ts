@@ -86,7 +86,7 @@ export class SearchLambda extends Construct {
         API_GATEWAY_STAGE: 'dev',
         
         // Bedrock configuration
-        BEDROCK_MODEL_ID: 'amazon.titan-text-express-v1',
+        BEDROCK_MODEL_ID: 'amazon.titan-text-premier-v1:0',
       },
       logGroup: new logs.LogGroup(this, 'LogGroup', {
         logGroupName: `/aws/lambda/ai-search-api`,
@@ -109,16 +109,6 @@ export class SearchLambda extends Construct {
         'bedrock:InvokeModelWithResponseStream',
       ],
       resources: ['*'], // Allow all Bedrock models
-    }));
-
-    // Grant AWS Marketplace permissions for Bedrock model subscriptions
-    this.function.addToRolePolicy(new iam.PolicyStatement({
-      effect: iam.Effect.ALLOW,
-      actions: [
-        'aws-marketplace:ViewSubscriptions',
-        'aws-marketplace:Subscribe',
-      ],
-      resources: ['*'],
     }));
 
     // Outputs

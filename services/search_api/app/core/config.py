@@ -25,8 +25,8 @@ class Settings(BaseSettings):
     # Bedrock / LLM
     # Amazon Titan doesn't require AWS Marketplace subscription (works with any payment method)
     # Claude models require US payment method for Marketplace subscription
-    BEDROCK_MODEL_ID: str = "amazon.titan-text-express-v1"  # Amazon Titan Text Express
-    BEDROCK_MAX_TOKENS: int = 2000  # Titan supports up to 8000
+    BEDROCK_MODEL_ID: str = "amazon.titan-text-premier-v1:0"  # Amazon Titan Text Premier (32K context)
+    BEDROCK_MAX_TOKENS: int = 3000  # Premier supports up to 32K tokens
     BEDROCK_TEMPERATURE: float = 0.7
 
     class Config:
