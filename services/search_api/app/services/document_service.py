@@ -152,3 +152,76 @@ class DocumentService:
             source=item.get("source"),
             created_at=item["created_at"],
         )
+
+    def delete(self, document_id: str) -> bool:
+        """
+        Delete a document and all associated data.
+        
+        Deletes:
+        - Document metadata from DynamoDB
+        - All chunks from DynamoDB  
+        - Vectors from FAISS index
+        - Raw file from S3 (if file_type is stored)
+        
+        Args:
+            document_id: Document ID to delete
+        
+        Returns:
+            bool: True if document was found and deleted, False if not found
+        """
+        logger.info(f"Starting deletion for document_id={document_id}")
+        
+        # Check if document exists
+        try:
+            document = self.get_by_id(document_id)
+        except DocumentNotFoundException:
+            logger.warning(f"Document not found for deletion: {document_id}")
+            return False
+        
+        deleted_any = False
+        
+        # 1. Delete chunks from DynamoDB
+        try:
+            logger.info(f"Deleting chunks for document_id={document_id}")
+            self.chunks_db.delete_by_document_id(document_id)
+            logger.info(f"Successfully deleted chunks for document_id={document_id}")
+            deleted_any = True
+        except Exception as e:
+            logger.error(f"Failed to delete chunks for document_id={document_id}: {str(e)}")
+        
+        # 2. Delete vectors from FAISS
+        try:
+            logger.info(f"Deleting vectors for document_id={document_id}")
+            self.vector_store.delete_by_document_id(document_id)
+            logger.info(f"Successfully deleted vectors for document_id={document_id}")
+            deleted_any = True
+        except Exception as e:
+            logger.error(f"Failed to delete vectors for document_id={document_id}: {str(e)}")
+        
+        # 3. Delete raw file from S3 (if file_type is available)
+        if hasattr(document, 'file_type') and document.file_type:
+            try:
+                from app.services.file_storage import FileStorage
+                file_storage = FileStorage()
+                logger.info(f"Deleting raw file for document_id={document_id}")
+                file_storage.delete(document_id, document.file_type)
+                logger.info(f"Successfully deleted raw file for document_id={document_id}")
+                deleted_any = True
+            except Exception as e:
+                logger.error(f"Failed to delete raw file for document_id={document_id}: {str(e)}")
+        
+        # 4. Delete document metadata from DynamoDB (do this last)
+        try:
+            logger.info(f"Deleting document metadata for document_id={document_id}")
+            self.db.table.delete_item(Key={"document_id": document_id})
+            logger.info(f"Successfully deleted document metadata for document_id={document_id}")
+            deleted_any = True
+        except ClientError as e:
+            logger.error(f"Failed to delete document metadata for document_id={document_id}: {str(e)}")
+            raise DatabaseException(
+                message="Failed to delete document metadata",
+                details={"document_id": document_id, "error": str(e)}
+            )
+        
+        logger.info(f"Completed deletion for document_id={document_id}")
+        return deleted_any

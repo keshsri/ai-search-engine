@@ -210,3 +210,78 @@ class FAISSVectorStore:
                 message="Failed to persist vector index",
                 details={"index_path": self.index_path, "metadata_path": self.metadata_path, "error": str(e)}
             )
+
+    def delete_by_document_id(self, document_id: str) -> int:
+        """
+        Delete all vectors associated with a document.
+        
+        Note: FAISS doesn't support efficient deletion, so we rebuild the index
+        without the deleted document's vectors.
+        
+        Args:
+            document_id: Document ID whose vectors should be deleted
+        
+        Returns:
+            int: Number of vectors deleted
+        """
+        logger.info(f"Deleting vectors for document_id={document_id}")
+        
+        if self.index.ntotal == 0:
+            logger.info("Index is empty, nothing to delete")
+            return 0
+        
+        # Find indices to keep (all except the ones for this document)
+        indices_to_keep = []
+        metadata_to_keep = []
+        deleted_count = 0
+        
+        for idx, meta in enumerate(self.metadata):
+            if meta.get('document_id') == document_id:
+                deleted_count += 1
+            else:
+                indices_to_keep.append(idx)
+                metadata_to_keep.append(meta)
+        
+        if deleted_count == 0:
+            logger.info(f"No vectors found for document_id={document_id}")
+            return 0
+        
+        logger.info(f"Found {deleted_count} vectors to delete for document_id={document_id}")
+        
+        try:
+            # Rebuild index without deleted vectors
+            if len(indices_to_keep) == 0:
+                # All vectors deleted, create empty index
+                logger.info("All vectors deleted, creating empty index")
+                self.index = faiss.IndexFlatIP(self.dim)
+                self.metadata = []
+            else:
+                # Reconstruct vectors for indices to keep
+                logger.info(f"Rebuilding index with {len(indices_to_keep)} remaining vectors")
+                
+                # Get all vectors from current index
+                all_vectors = np.zeros((self.index.ntotal, self.dim), dtype='float32')
+                for i in range(self.index.ntotal):
+                    all_vectors[i] = self.index.reconstruct(i)
+                
+                # Keep only the vectors we want
+                vectors_to_keep = all_vectors[indices_to_keep]
+                
+                # Create new index and add kept vectors
+                self.index = faiss.IndexFlatIP(self.dim)
+                self.index.add(vectors_to_keep)
+                self.metadata = metadata_to_keep
+                
+                logger.info(f"Successfully rebuilt index with {self.index.ntotal} vectors")
+            
+            # Persist changes
+            self._persist()
+            logger.info(f"Successfully deleted {deleted_count} vectors for document_id={document_id}")
+            return deleted_count
+            
+        except Exception as e:
+            logger.error(f"Failed to delete vectors for document_id={document_id}: {str(e)}")
+            raise VectorStoreException(
+                message="Failed to delete vectors from index",
+                details={"document_id": document_id, "error": str(e)}
+            )

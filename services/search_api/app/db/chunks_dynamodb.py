@@ -73,3 +73,63 @@ class ChunksDynamoDB:
                 message="Failed to save chunks",
                 details={"error": str(e)}
             )
+
+    def delete_by_document_id(self, document_id: str) -> int:
+        """
+        Delete all chunks for a given document.
+        
+        Args:
+            document_id: Document ID whose chunks should be deleted
+        
+        Returns:
+            int: Number of chunks deleted
+        """
+        logger.info(f"Deleting all chunks for document_id={document_id}")
+        
+        try:
+            # Query all chunks for this document
+            response = self.table.query(
+                KeyConditionExpression='document_id = :doc_id',
+                ExpressionAttributeValues={
+                    ':doc_id': document_id
+                }
+            )
+            
+            chunks = response.get('Items', [])
+            
+            if not chunks:
+                logger.info(f"No chunks found for document_id={document_id}")
+                return 0
+            
+            logger.info(f"Found {len(chunks)} chunks to delete for document_id={document_id}")
+            
+            # Delete chunks in batches
+            deleted_count = 0
+            with self.table.batch_writer() as batch:
+                for chunk in chunks:
+                    batch.delete_item(
+                        Key={
+                            'document_id': chunk['document_id'],
+                            'chunk_id': chunk['chunk_id']
+                        }
+                    )
+                    deleted_count += 1
+                    
+                    if deleted_count % 25 == 0:
+                        logger.debug(f"Deleted {deleted_count}/{len(chunks)} chunks")
+            
+            logger.info(f"Successfully deleted {deleted_count} chunks for document_id={document_id}")
+            return deleted_count
+            
+        except (ClientError, BotoCoreError) as e:
+            logger.error(f"Failed to delete chunks for document_id={document_id}: {str(e)}")
+            raise DatabaseException(
+                message="Failed to delete chunks from database",
+                details={"document_id": document_id, "error": str(e)}
+            )
+        except Exception as e:
+            logger.error(f"Unexpected error deleting chunks for document_id={document_id}: {str(e)}")
+            raise DatabaseException(
+                message="Failed to delete chunks",
+                details={"document_id": document_id, "error": str(e)}
+            )

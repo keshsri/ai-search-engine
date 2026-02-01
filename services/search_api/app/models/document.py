@@ -14,3 +14,15 @@ class Document(BaseModel):
     file_type: Optional[str] = None  # File extension (pdf, docx, txt)
     file_size: Optional[int] = None  # Size in bytes
     file_path: Optional[str] = None  # Where file is stored
+
+
+class DeleteDocumentRequest(BaseModel):
+    """Request model for deleting a document."""
+    document_id: str = Field(..., description="Document ID to delete")
+
+
+class DeleteDocumentResponse(BaseModel):
+    """Response model for document deletion."""
+    document_id: str = Field(..., description="Deleted document ID")
+    deleted: bool = Field(..., description="Whether deletion was successful")
+    message: str = Field(..., description="Deletion status message")
