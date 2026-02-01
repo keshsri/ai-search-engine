@@ -7,7 +7,7 @@
 
 A serverless semantic search engine with RAG capabilities that enables natural language queries over document collections. Users can upload documents (PDF, DOCX, TXT), perform semantic search, and receive AI-generated answers grounded in their content.
 
-**Key Technologies**: FastAPI, AWS Lambda, DynamoDB, S3, FAISS, sentence-transformers, AWS Bedrock (Claude 3.5 Haiku)
+**Key Technologies**: FastAPI, AWS Lambda, DynamoDB, S3, FAISS, sentence-transformers, AWS Bedrock (Amazon Nova Micro)
 
 ## 2. Problem Statement
 
@@ -45,7 +45,7 @@ Lambda Function (Docker, 3GB memory, 5min timeout)
 │   └─ FAISS index + metadata
 │
 └─ AWS Bedrock
-    └─ Claude 3.5 Haiku (LLM)
+    └─ Amazon Nova Micro (LLM)
 ```
 
 ### Component Responsibilities
@@ -85,7 +85,7 @@ Lambda Function (Docker, 3GB memory, 5min timeout)
 2. Retrieve relevant chunks (semantic search)
 3. Load conversation history (if exists)
 4. Build prompt: context + history + query
-5. Call Bedrock (Claude 3.5 Haiku)
+5. Call Bedrock (Amazon Nova Micro)
 6. Save conversation to DynamoDB
 7. Return answer + sources + conversation_id
 
@@ -107,14 +107,14 @@ Lambda Function (Docker, 3GB memory, 5min timeout)
 - **Trade-off**: Accuracy over speed (suitable for <100K vectors)
 
 ### Bedrock Service
-- **Model**: Claude 3.5 Haiku ($1/M input, $5/M output tokens)
-- **Config**: Max 1000 tokens, temperature 0.7
+- **Model**: Amazon Nova Micro ($0.035/M input, $0.14/M output tokens)
+- **Config**: Max 3000 tokens, temperature 0.7
 - **Prompt**: System instructions + context + history + query
 
 ### Conversation Service
 - **Storage**: DynamoDB (messages as list for atomic updates)
-- **Context**: Last 10 messages included in LLM prompts
-- **Expiration**: Manual cleanup (no TTL configured)
+- **Context**: Last 5 messages included in LLM prompts
+- **Expiration**: 15-day TTL (auto-deletion)
 
 ## 6. API Design
 
@@ -123,13 +123,13 @@ Lambda Function (Docker, 3GB memory, 5min timeout)
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/health/` | Health check |
+| GET | `/documents/` | List all documents |
 | POST | `/documents/` | Ingest from JSON |
 | POST | `/documents/upload` | Upload file |
 | GET | `/documents/{id}` | Get document |
 | DELETE | `/documents/{id}` | Delete document |
 | POST | `/search/` | Semantic search |
 | POST | `/chat/` | RAG Q&A |
-| GET | `/chat/conversations/{id}` | Get history |
 
 ### Error Response Format
 
@@ -151,10 +151,11 @@ Lambda Function (Docker, 3GB memory, 5min timeout)
 - Pay-per-request billing
 - DESTROY removal policy
 - No point-in-time recovery
+- 15-day TTL on all tables
 
 **S3 Bucket**:
 - AES-256 encryption
-- 90-day lifecycle policy
+- 15-day lifecycle policy
 - Public access blocked
 
 **Lambda**:
@@ -165,7 +166,7 @@ Lambda Function (Docker, 3GB memory, 5min timeout)
 **API Gateway**:
 - REST API with /dev stage
 - Throttling configured
-- CloudWatch logging enabled
+- CloudWatch logging enabled (3-day retention)
 
 **IAM**:
 - Least privilege permissions
@@ -216,7 +217,6 @@ Lambda Function (Docker, 3GB memory, 5min timeout)
 
 ### Authentication
 - **Current**: None (public API)
-- **Production**: API keys, JWT, per-user rate limiting
 
 ### IAM
 - No static credentials (OIDC for CI/CD)
@@ -228,6 +228,7 @@ Lambda Function (Docker, 3GB memory, 5min timeout)
 - DynamoDB: AWS managed encryption
 - API Gateway: HTTPS only (TLS 1.2+)
 - No PII stored
+- 15-day auto-deletion (TTL)
 
 ## 10. Cost Analysis
 
@@ -239,17 +240,18 @@ Lambda Function (Docker, 3GB memory, 5min timeout)
 | API Gateway | 1M req/month | 3K req/month | $0 |
 | DynamoDB | 25GB storage | <1GB | $0 |
 | S3 | 5GB storage | <1GB | $0 |
-| Bedrock | None | 100 queries | $0.15 |
+| Bedrock | None | 100 queries | $0.01 |
 
-**Total**: ~$0.15-$5/month depending on usage
+**Total**: ~$0.01-$2/month depending on usage
 
 ### Cost Optimization
 
 - Serverless (no idle costs)
 - Pay-per-request DynamoDB
-- 7-day log retention
-- S3 lifecycle policies
+- 3-day log retention
+- 15-day S3 lifecycle + DynamoDB TTL
 - Efficient chunking
+- Amazon Nova Micro (cheapest LLM)
 
 ## 11. Known Limitations
 
@@ -268,8 +270,6 @@ Lambda Function (Docker, 3GB memory, 5min timeout)
 ### 3. No Authentication
 - **Issue**: Public API
 - **Impact**: No user tracking or rate limiting
-- **Acceptable**: Demo/portfolio projects
-- **Solution**: API keys or JWT
 
 ### 4. FAISS Scalability
 - **Current**: Exact search, O(n) complexity
@@ -303,7 +303,6 @@ Lambda Function (Docker, 3GB memory, 5min timeout)
 **Short-term**:
 - Streamlit frontend
 - Query caching
-- Conversation expiration (TTL)
 
 **Medium-term**:
 - API key authentication
@@ -318,10 +317,11 @@ Lambda Function (Docker, 3GB memory, 5min timeout)
 
 ## 14. Conclusion
 
-This system demonstrates production-grade engineering practices: serverless architecture, infrastructure-as-code, comprehensive error handling, and secure-by-default design. The solution balances cost efficiency with functionality, making it suitable for portfolio demonstration while being extensible for production use.
+This system demonstrates modern engineering practices: serverless architecture, infrastructure-as-code, comprehensive error handling, and secure-by-default design.
 
 **Key Strengths**:
 - Stateless, horizontally scalable
-- Cost-effective (<$5/month)
+- Cost-effective (<$2/month with auto-deletion)
 - Secure (no credentials, IAM-only)
 - Well-documented and maintainable
+- Full RAG implementation with conversation memory

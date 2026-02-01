@@ -1,14 +1,16 @@
 # AI Semantic Search Engine with RAG
 
-A production-grade serverless semantic search engine that enables natural language queries over document collections using Retrieval-Augmented Generation (RAG).
+A serverless semantic search engine that enables natural language queries over document collections using Retrieval-Augmented Generation (RAG).
 
 ## Features
 
 - **Document Ingestion**: Upload PDF, DOCX, and TXT files with automatic text extraction
 - **Semantic Search**: Natural language queries using sentence-transformer embeddings
-- **RAG Chat**: AI-generated answers grounded in your documents using AWS Bedrock (Claude 3.5 Haiku)
+- **RAG Chat**: AI-generated answers grounded in your documents using AWS Bedrock (Amazon Nova Micro)
 - **Conversation History**: Multi-turn dialogues with context preservation
+- **Document Management**: List and delete documents with full cleanup
 - **Serverless Architecture**: Auto-scaling, pay-per-use infrastructure on AWS
+- **Auto-Deletion**: 15-day TTL on all data for cost optimization
 
 ## Technology Stack
 
@@ -16,7 +18,7 @@ A production-grade serverless semantic search engine that enables natural langua
 - **Infrastructure**: AWS CDK (TypeScript)
 - **Compute**: AWS Lambda (Docker containers)
 - **Storage**: DynamoDB, S3, FAISS
-- **AI/ML**: sentence-transformers, AWS Bedrock
+- **AI/ML**: sentence-transformers, AWS Bedrock (Amazon Nova Micro)
 - **CI/CD**: GitHub Actions with OIDC
 
 ## Quick Start
@@ -26,7 +28,7 @@ A production-grade serverless semantic search engine that enables natural langua
 - AWS Account with Bedrock access
 - Node.js 18+ and npm
 - Python 3.12+
-- Docker (for local development)
+- Docker (for deployment via GitHub Actions)
 
 ### Local Development
 
@@ -58,13 +60,13 @@ See [AWS Deployment Guide](docs/aws-deployment.md) for detailed instructions.
 ## API Endpoints
 
 - `GET /health/` - Health check
+- `GET /documents/` - List all documents
 - `POST /documents/` - Ingest document from JSON
 - `POST /documents/upload` - Upload file (PDF/DOCX/TXT)
 - `GET /documents/{id}` - Retrieve document
-- `DELETE /documents/{id}` - Delete document
+- `DELETE /documents/{id}` - Delete document and all associated data
 - `POST /search/` - Semantic search
 - `POST /chat/` - RAG-powered Q&A
-- `GET /chat/conversations/{id}` - Conversation history
 
 Interactive docs available at `/docs` (Swagger UI) and `/redoc`.
 
@@ -74,7 +76,7 @@ Interactive docs available at `/docs` (Swagger UI) and `/redoc`.
 Client → API Gateway → Lambda (FastAPI)
                          ├─ DynamoDB (documents, chunks, conversations)
                          ├─ S3 (files, FAISS index)
-                         └─ Bedrock (Claude 3.5 Haiku)
+                         └─ Bedrock (Amazon Nova Micro)
 ```
 
 ## Documentation
@@ -89,7 +91,7 @@ Client → API Gateway → Lambda (FastAPI)
 
 - First request after cold start may timeout (retry after 5 seconds)
 - Some PDFs with font issues may fail extraction (convert to TXT)
-- No authentication (suitable for demo/portfolio projects)
+- No authentication
 - API Gateway has 30-second timeout limit
 
 See [Known Issues](docs/known-issues.md) for details and workarounds.
@@ -102,14 +104,6 @@ Within AWS Free Tier:
 - DynamoDB: 25 GB storage free
 - S3: 5 GB storage free
 
-Bedrock (Claude 3.5 Haiku): ~$0.003 per query
+Amazon Nova Micro: $0.035 input / $0.14 output per 1M tokens (~$0.0001 per query)
 
-Typical usage: <$5/month
-
-## License
-
-MIT License - See LICENSE file for details
-
-## Contributing
-
-This is a portfolio project. Feel free to fork and adapt for your own use.
+Typical usage: <$2/month with 15-day auto-deletion

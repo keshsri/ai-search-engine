@@ -16,10 +16,7 @@
 2. Wait 5 seconds
 3. Retry (will succeed)
 
-**Production Solutions**:
-- EventBridge scheduled rule (ping every 5 minutes)
-- Provisioned concurrency (~$15/month)
-- Smaller embedding model
+**Note**: For higher availability, consider provisioned concurrency (~$15/month).
 
 ---
 
@@ -37,7 +34,7 @@
 - Use DOCX format instead
 - Re-export PDF from Adobe Acrobat
 
-**Production Solution**: AWS Textract integration (~$1.50 per 1K pages)
+**Note**: AWS Textract integration would solve this (~$1.50 per 1K pages).
 
 ---
 
@@ -49,14 +46,6 @@
 - No user tracking
 - No per-user rate limiting
 - Anyone can upload/search
-
-**Acceptable For**: Demo/portfolio projects
-
-**Production Requirements**:
-- API key authentication
-- JWT-based auth
-- Per-user rate limiting
-- AWS WAF for DDoS protection
 
 ---
 

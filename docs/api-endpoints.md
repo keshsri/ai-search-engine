@@ -12,7 +12,7 @@ Replace with your actual API Gateway endpoint after deployment.
 
 ## Authentication
 
-Currently no authentication required. For production use, implement API keys or JWT.
+No authentication required.
 
 ## Endpoints
 
@@ -25,6 +25,26 @@ GET /health/
 **Response**:
 ```json
 {"status": "ok"}
+```
+
+---
+
+### List Documents
+
+```http
+GET /documents/
+```
+
+**Response**:
+```json
+[
+  {
+    "document_id": "uuid",
+    "title": "Document Title",
+    "created_at": "2026-01-31T12:00:00Z",
+    "source": null
+  }
+]
 ```
 
 ---
@@ -44,7 +64,7 @@ Content-Type: application/json
 **Response**:
 ```json
 {
-  "document_id": "uuid",
+  "id": "uuid",
   "title": "Document Title",
   "content": "Document text...",
   "created_at": "2026-01-31T12:00:00Z"
@@ -62,7 +82,7 @@ Content-Type: multipart/form-data
 file: <binary>
 ```
 
-**Supported formats**: PDF, DOCX, TXT
+**Supported formats**: PDF, DOCX, TXT (max 10MB)
 
 **Example**:
 ```bash
@@ -83,7 +103,7 @@ GET /documents/{document_id}
 **Response**:
 ```json
 {
-  "document_id": "uuid",
+  "id": "uuid",
   "title": "Document Title",
   "content": "Full text...",
   "created_at": "2026-01-31T12:00:00Z"
@@ -98,11 +118,18 @@ GET /documents/{document_id}
 DELETE /documents/{document_id}
 ```
 
+Deletes document and all associated data:
+- Document metadata from DynamoDB
+- All chunks from DynamoDB
+- Vectors from FAISS index
+- Raw file from S3
+
 **Response**:
 ```json
 {
-  "message": "Document deleted successfully",
-  "document_id": "uuid"
+  "document_id": "uuid",
+  "deleted": true,
+  "message": "Document and all associated data deleted successfully"
 }
 ```
 
@@ -175,7 +202,7 @@ Content-Type: application/json
       "score": 0.92
     }
   ],
-  "model": "anthropic.claude-3-5-haiku-20241022-v1:0"
+  "model": "amazon.nova-micro-v1:0"
 }
 ```
 
@@ -194,36 +221,6 @@ curl -X POST https://your-api/dev/chat/ \
     "query": "Tell me more about that",
     "conversation_id": "uuid-from-previous-response"
   }'
-```
-
----
-
-### Get Conversation History
-
-```http
-GET /chat/conversations/{conversation_id}
-```
-
-**Response**:
-```json
-{
-  "conversation_id": "uuid",
-  "user_id": "anonymous",
-  "messages": [
-    {
-      "role": "user",
-      "content": "What is Python used for in AI?",
-      "timestamp": "2026-01-31T12:00:00Z"
-    },
-    {
-      "role": "assistant",
-      "content": "Python is widely used...",
-      "timestamp": "2026-01-31T12:00:01Z"
-    }
-  ],
-  "created_at": "2026-01-31T12:00:00Z",
-  "updated_at": "2026-01-31T12:00:01Z"
-}
 ```
 
 ---
@@ -285,8 +282,8 @@ First request after cold start may timeout (30s). Retry after 5 seconds.
 ### PDF Limitations
 Some PDFs with font issues may fail. Convert to TXT or DOCX as workaround.
 
-### Conversation Persistence
-Conversations stored indefinitely. Manual cleanup required.
+### Data Retention
+All data auto-deletes after 15 days (DynamoDB TTL + S3 lifecycle).
 
 ---
 
@@ -300,13 +297,19 @@ curl https://your-api/dev/health/
 curl -X POST https://your-api/dev/documents/upload \
   -F "file=@test.txt"
 
-# 3. Search
+# 3. List documents
+curl https://your-api/dev/documents/
+
+# 4. Search
 curl -X POST https://your-api/dev/search/ \
   -H "Content-Type: application/json" \
   -d '{"query": "your search query"}'
 
-# 4. Chat
+# 5. Chat
 curl -X POST https://your-api/dev/chat/ \
   -H "Content-Type: application/json" \
   -d '{"query": "your question"}'
+
+# 6. Delete document
+curl -X DELETE https://your-api/dev/documents/{document_id}
 ```

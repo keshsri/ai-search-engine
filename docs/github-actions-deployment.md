@@ -85,7 +85,7 @@ aws iam attach-role-policy \
   --policy-arn arn:aws:iam::aws:policy/AdministratorAccess
 ```
 
-**For production**: Create custom policy with only required permissions (CloudFormation, Lambda, API Gateway, S3, DynamoDB, IAM, ECR, CloudWatch).
+**For GitHub Actions**: Create custom policy with only required permissions (CloudFormation, Lambda, API Gateway, S3, DynamoDB, IAM, ECR, CloudWatch).
 
 ### 4. Add Role ARN to GitHub Secrets
 

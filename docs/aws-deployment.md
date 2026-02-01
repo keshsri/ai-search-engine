@@ -207,9 +207,9 @@ Increase `memorySize` in CDK stack (max 10GB).
 
 ## Security Best Practices
 
-1. Add API keys for production
-2. Restrict CORS origins
-3. Use least-privilege IAM roles
+1. Restrict CORS origins if needed
+2. Use least-privilege IAM roles
+3. Enable CloudWatch alarms for monitoring
 4. Enable S3 bucket encryption
 5. Review CloudTrail logs regularly
 
