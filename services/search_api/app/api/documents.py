@@ -39,16 +39,22 @@ def list_documents(
         response = service.db.table.scan()
         documents = response.get('Items', [])
         
-        # Format response
-        result = [
-            {
+        # Format response with safe field access
+        result = []
+        for doc in documents:
+            # Handle missing fields gracefully
+            from datetime import datetime
+            created_at = doc.get("created_at", datetime.utcnow().isoformat())
+            
+            result.append({
                 "document_id": doc.get("document_id"),
-                "title": doc.get("title"),
-                "created_at": doc.get("created_at"),
+                "title": doc.get("title", "Untitled"),
+                "created_at": created_at,
                 "source": doc.get("source")
-            }
-            for doc in documents
-        ]
+            })
+        
+        # Sort by created_at (most recent first)
+        result.sort(key=lambda x: x['created_at'], reverse=True)
         
         logger.info(f"Found {len(result)} documents")
         return result

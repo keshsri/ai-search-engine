@@ -159,12 +159,16 @@ class ConversationService:
             # Format response
             result = []
             for conv in conversations:
+                # Handle missing fields gracefully
+                created_at = conv.get('created_at', datetime.utcnow().isoformat())
+                updated_at = conv.get('updated_at', created_at)
+                
                 result.append({
                     'conversation_id': conv['conversation_id'],
-                    'user_id': conv.get('user_id'),
+                    'user_id': conv.get('user_id', 'anonymous'),
                     'message_count': len(conv.get('messages', [])),
-                    'created_at': conv['created_at'],
-                    'updated_at': conv['updated_at']
+                    'created_at': created_at,
+                    'updated_at': updated_at
                 })
             
             # Sort by updated_at (most recent first)

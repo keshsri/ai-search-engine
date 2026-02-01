@@ -69,13 +69,18 @@ def get_conversation(conversation_id: str):
         
         logger.info(f"Retrieved conversation {conversation_id} with {len(conversation.get('messages', []))} messages")
         
+        # Handle missing fields gracefully
+        from datetime import datetime
+        created_at = conversation.get('created_at', datetime.utcnow().isoformat())
+        updated_at = conversation.get('updated_at', created_at)
+        
         # Convert to response model
         return ConversationDetail(
             conversation_id=conversation['conversation_id'],
-            user_id=conversation.get('user_id'),
+            user_id=conversation.get('user_id', 'anonymous'),
             messages=conversation.get('messages', []),
-            created_at=conversation['created_at'],
-            updated_at=conversation['updated_at']
+            created_at=created_at,
+            updated_at=updated_at
         )
     
     except HTTPException:
