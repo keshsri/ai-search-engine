@@ -1,5 +1,5 @@
 """
-Bedrock service for LLM-powered answer generation.
+Bedrock service for LLM-powered answer generation using Amazon Nova.
 """
 import json
 import logging
@@ -101,20 +101,29 @@ Answer:"""
         return prompt
     
     def _invoke_model(self, prompt: str) -> Dict:
-        """Invoke Bedrock model (Amazon Titan) and return response."""
+        """Invoke Bedrock model (Amazon Nova) and return response."""
         
-        # Amazon Titan format
+        # Amazon Nova format (messages API)
         request_body = {
-            "inputText": prompt,
-            "textGenerationConfig": {
-                "maxTokenCount": self.max_tokens,
+            "schemaVersion": "messages-v1",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "text": prompt
+                        }
+                    ]
+                }
+            ],
+            "inferenceConfig": {
+                "maxTokens": self.max_tokens,
                 "temperature": self.temperature,
-                "topP": 0.9,
-                "stopSequences": []
+                "topP": 0.9
             }
         }
         
-        logger.debug(f"Invoking Amazon Titan model: {self.model_id}")
+        logger.debug(f"Invoking Amazon Nova model: {self.model_id}")
         
         try:
             response = self.client.invoke_model(
@@ -125,15 +134,15 @@ Answer:"""
             # Parse response
             response_body = json.loads(response['body'].read())
             
-            # Extract answer from Titan response
-            answer = response_body['results'][0]['outputText'].strip()
+            # Extract answer from Nova response
+            answer = response_body['output']['message']['content'][0]['text'].strip()
             
             return {
                 'answer': answer,
                 'model': self.model_id,
                 'usage': {
-                    'inputTokenCount': response_body.get('inputTextTokenCount', 0),
-                    'outputTokenCount': response_body['results'][0].get('tokenCount', 0)
+                    'inputTokenCount': response_body.get('usage', {}).get('inputTokens', 0),
+                    'outputTokenCount': response_body.get('usage', {}).get('outputTokens', 0)
                 }
             }
             

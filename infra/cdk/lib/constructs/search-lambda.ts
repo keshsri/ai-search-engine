@@ -86,8 +86,6 @@ export class SearchLambda extends Construct {
         API_GATEWAY_STAGE: 'dev',
         
         // Bedrock configuration
-        // Amazon Nova doesn't require Marketplace subscription (works with any payment method)
-        // Nova Micro: $0.035/$0.14 per 1M tokens (cheapest model on market)
         BEDROCK_MODEL_ID: 'amazon.nova-micro-v1:0',
       },
       logGroup: new logs.LogGroup(this, 'LogGroup', {
