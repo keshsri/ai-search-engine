@@ -41,17 +41,22 @@ class DocumentService:
                 details={"document_id": document.id, "title": document.title}
             )
 
+        # Calculate TTL: 15 days from now (in Unix timestamp)
+        import time
+        ttl = int(time.time()) + (15 * 24 * 60 * 60)  # 15 days in seconds
+
         item = {
             "document_id": document.id,
             "title": document.title,
             "content": document.content,
             "source": document.source,
-            "created_at": document.created_at.isoformat()
+            "created_at": document.created_at.isoformat(),
+            "ttl": ttl  # Auto-delete after 15 days
         }
 
         try:
             self.db.table.put_item(Item=item)
-            logger.info(f"Saved document metadata to DynamoDB: document_id={document.id}")
+            logger.info(f"Saved document metadata to DynamoDB: document_id={document.id}, ttl={ttl}")
         except ClientError as e:
             logger.error(f"DynamoDB ClientError saving document: document_id={document.id}, error={str(e)}")
             raise DatabaseException(

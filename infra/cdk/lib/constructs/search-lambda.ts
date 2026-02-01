@@ -39,7 +39,7 @@ export interface SearchLambdaProps {
   timeout?: number;
 
   /**
-   * Log retention in days (default: 7 days)
+   * Log retention in days (default: 3 days)
    */
   logRetention?: logs.RetentionDays;
 }
@@ -52,7 +52,7 @@ export class SearchLambda extends Construct {
 
     const memorySize = props.memorySize ?? 3008; // 3 GB for embedding model
     const timeout = props.timeout ?? 300; // 5 minutes
-    const logRetention = props.logRetention ?? logs.RetentionDays.ONE_WEEK;
+    const logRetention = props.logRetention ?? logs.RetentionDays.THREE_DAYS; // Reduced for cost savings
 
     // Lambda Function with Docker container
     this.function = new lambda.DockerImageFunction(this, 'Function', {
@@ -85,9 +85,8 @@ export class SearchLambda extends Construct {
         // API Gateway stage for docs
         API_GATEWAY_STAGE: 'dev',
         
-        // Bedrock configuration (use inference profile for on-demand access)
-        // Using Claude 3 Haiku (older version) - more likely to have access
-        BEDROCK_MODEL_ID: 'us.anthropic.claude-3-haiku-20240307-v1:0',
+        // Bedrock configuration
+        BEDROCK_MODEL_ID: 'amazon.titan-text-express-v1',
       },
       logGroup: new logs.LogGroup(this, 'LogGroup', {
         logGroupName: `/aws/lambda/ai-search-api`,

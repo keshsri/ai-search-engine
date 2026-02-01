@@ -23,11 +23,10 @@ class Settings(BaseSettings):
     FAISS_TOP_K: int = 5
 
     # Bedrock / LLM
-    # Use inference profile for on-demand access
-    # Options: us.anthropic.claude-3-haiku-20240307-v1:0 (Claude 3 Haiku)
-    #          us.anthropic.claude-3-5-haiku-20241022-v1:0 (Claude 3.5 Haiku - requires access)
-    BEDROCK_MODEL_ID: str = "us.anthropic.claude-3-haiku-20240307-v1:0"  # Claude 3 Haiku
-    BEDROCK_MAX_TOKENS: int = 1000
+    # Amazon Titan doesn't require AWS Marketplace subscription (works with any payment method)
+    # Claude models require US payment method for Marketplace subscription
+    BEDROCK_MODEL_ID: str = "amazon.titan-text-express-v1"  # Amazon Titan Text Express
+    BEDROCK_MAX_TOKENS: int = 2000  # Titan supports up to 8000
     BEDROCK_TEMPERATURE: float = 0.7
 
     class Config:

@@ -28,6 +28,7 @@ export class DynamoDBTables extends Construct {
       pointInTimeRecoverySpecification: {
         pointInTimeRecoveryEnabled: false, 
       },
+      timeToLiveAttribute: 'ttl', // Auto-delete items after TTL expires
     });
 
     // Chunks Table - stores document chunks with embeddings metadata
@@ -46,6 +47,7 @@ export class DynamoDBTables extends Construct {
       pointInTimeRecoverySpecification: {
         pointInTimeRecoveryEnabled: false,
       },
+      timeToLiveAttribute: 'ttl', // Auto-delete items after TTL expires
     });
 
     // Conversations Table - stores chat conversation history
@@ -60,6 +62,7 @@ export class DynamoDBTables extends Construct {
       pointInTimeRecoverySpecification: {
         pointInTimeRecoveryEnabled: false,
       },
+      timeToLiveAttribute: 'ttl', // Auto-delete items after TTL expires
     });
 
     // Outputs

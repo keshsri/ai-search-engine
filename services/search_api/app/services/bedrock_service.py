@@ -101,22 +101,20 @@ Answer:"""
         return prompt
     
     def _invoke_model(self, prompt: str) -> Dict:
-        """Invoke Bedrock model and return response."""
+        """Invoke Bedrock model (Amazon Titan) and return response."""
         
-        # Prepare request body (Claude format)
+        # Amazon Titan format
         request_body = {
-            "anthropic_version": "bedrock-2023-05-31",
-            "max_tokens": self.max_tokens,
-            "temperature": self.temperature,
-            "messages": [
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ]
+            "inputText": prompt,
+            "textGenerationConfig": {
+                "maxTokenCount": self.max_tokens,
+                "temperature": self.temperature,
+                "topP": 0.9,
+                "stopSequences": []
+            }
         }
         
-        logger.debug(f"Invoking Bedrock model: {self.model_id}")
+        logger.debug(f"Invoking Amazon Titan model: {self.model_id}")
         
         try:
             response = self.client.invoke_model(
@@ -127,13 +125,16 @@ Answer:"""
             # Parse response
             response_body = json.loads(response['body'].read())
             
-            # Extract answer from Claude response
-            answer = response_body['content'][0]['text']
+            # Extract answer from Titan response
+            answer = response_body['results'][0]['outputText'].strip()
             
             return {
                 'answer': answer,
                 'model': self.model_id,
-                'usage': response_body.get('usage', {})
+                'usage': {
+                    'inputTokenCount': response_body.get('inputTextTokenCount', 0),
+                    'outputTokenCount': response_body['results'][0].get('tokenCount', 0)
+                }
             }
             
         except ClientError as e:

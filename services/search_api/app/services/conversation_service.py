@@ -37,6 +37,10 @@ class ConversationService:
         conversation_id = str(uuid.uuid4())
         timestamp = datetime.utcnow().isoformat()
         
+        # Calculate TTL: 15 days from now (in Unix timestamp)
+        import time
+        ttl = int(time.time()) + (15 * 24 * 60 * 60)  # 15 days in seconds
+        
         try:
             self.table.put_item(
                 Item={
@@ -44,10 +48,11 @@ class ConversationService:
                     'user_id': user_id or 'anonymous',
                     'messages': [],
                     'created_at': timestamp,
-                    'updated_at': timestamp
+                    'updated_at': timestamp,
+                    'ttl': ttl  # Auto-delete after 15 days
                 }
             )
-            logger.info(f"Created conversation: {conversation_id}")
+            logger.info(f"Created conversation: {conversation_id} with TTL={ttl}")
             return conversation_id
         except ClientError as e:
             logger.error(f"Failed to create conversation: {str(e)}")

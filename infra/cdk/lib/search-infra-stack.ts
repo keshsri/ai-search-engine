@@ -25,7 +25,7 @@ export class SearchInfraStack extends cdk.Stack {
     const storageBucket = new StorageBucket(this, 'StorageBucket', {
       accountId: this.account,
       removalPolicy: cdk.RemovalPolicy.DESTROY, // Safe for personal project
-      expirationDays: 90, // Auto-delete files after 90 days
+      expirationDays: 15, // Auto-delete files after 15 days
     });
 
     // ========================================

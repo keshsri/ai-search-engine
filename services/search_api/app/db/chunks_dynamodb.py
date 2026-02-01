@@ -40,6 +40,10 @@ class ChunksDynamoDB:
         logger.info(f"Saving {len(chunks)} chunks to DynamoDB table: {CHUNKS_TABLE_NAME}")
         logger.debug(f"First chunk document_id: {chunks[0].document_id}")
 
+        # Calculate TTL: 15 days from now (in Unix timestamp)
+        import time
+        ttl = int(time.time()) + (15 * 24 * 60 * 60)  # 15 days in seconds
+
         try:
             with self.table.batch_writer() as batch:
                 for i, chunk in enumerate(chunks):
@@ -50,12 +54,13 @@ class ChunksDynamoDB:
                             "index": chunk.index,
                             "content": chunk.content,
                             "created_at": chunk.created_at.isoformat(),
+                            "ttl": ttl  # Auto-delete after 15 days
                         }
                     )
                     if (i + 1) % 25 == 0:  # Log progress every 25 chunks
                         logger.debug(f"Saved {i + 1}/{len(chunks)} chunks")
             
-            logger.info(f"Successfully saved all {len(chunks)} chunks to DynamoDB")
+            logger.info(f"Successfully saved all {len(chunks)} chunks to DynamoDB with TTL={ttl}")
         except (ClientError, BotoCoreError) as e:
             logger.error(f"Failed to save chunks to DynamoDB: {str(e)}")
             raise DatabaseException(
