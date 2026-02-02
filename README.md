@@ -2,6 +2,8 @@
 
 A serverless semantic search engine that enables natural language queries over document collections using Retrieval-Augmented Generation (RAG).
 
+Visit this [Wiki](https://deepwiki.com/keshsri/ai-search-engine) for complete and detailed AI generated documentation about this repositry.
+
 ## Features
 
 - **Document Ingestion**: Upload PDF, DOCX, and TXT files with automatic text extraction
