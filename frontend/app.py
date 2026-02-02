@@ -40,6 +40,8 @@ st.markdown("Ask questions about your documents using natural language")
 with st.sidebar:
     st.header("📚 Document Management")
     
+    st.warning("⚠️ Max file size: **10MB** (backend limit)")
+    
     # File upload
     uploaded_file = st.file_uploader(
         "Upload Document",
@@ -49,19 +51,24 @@ with st.sidebar:
     
     if uploaded_file:
         if st.button("Upload", type="primary"):
-            with st.spinner("Uploading document..."):
+            with st.spinner("Uploading document... (may take 30-60 seconds)"):
                 try:
                     files = {"file": uploaded_file}
                     response = requests.post(
                         f"{API_BASE_URL}/documents/upload",
                         files=files,
-                        timeout=60
+                        timeout=120  # Increased timeout
                     )
                     
                     if response.status_code == 200:
                         st.success(f"✅ Uploaded: {uploaded_file.name}")
+                        st.rerun()  # Refresh to show new document
+                    elif response.status_code == 504:
+                        st.warning("⏱️ Upload timed out, but may still be processing. Wait 10 seconds and refresh the page.")
                     else:
                         st.error(f"❌ Upload failed: {response.json().get('detail', 'Unknown error')}")
+                except requests.exceptions.Timeout:
+                    st.warning("⏱️ Upload timed out, but document is likely still processing. Wait 10 seconds and refresh the page.")
                 except Exception as e:
                     st.error(f"❌ Error: {str(e)}")
     
@@ -106,21 +113,45 @@ with st.sidebar:
                     with col1:
                         if st.button(
                             f"💬 {conv['message_count']} msgs",
-                            key=f"conv_{conv['conversation_id']}"
+                            key=f"conv_{conv['conversation_id']}",
+                            use_container_width=True
                         ):
-                            st.session_state.conversation_id = conv['conversation_id']
-                            st.rerun()
+                            # Load conversation messages
+                            try:
+                                conv_response = requests.get(
+                                    f"{API_BASE_URL}/chat/conversations/{conv['conversation_id']}",
+                                    timeout=10
+                                )
+                                if conv_response.status_code == 200:
+                                    conv_data = conv_response.json()
+                                    # Set conversation ID and load messages
+                                    st.session_state.conversation_id = conv['conversation_id']
+                                    st.session_state.messages = []
+                                    
+                                    # Convert messages to session state format
+                                    for msg in conv_data['messages']:
+                                        st.session_state.messages.append({
+                                            "role": msg['role'],
+                                            "content": msg['content']
+                                        })
+                                    st.rerun()
+                            except Exception as e:
+                                st.error(f"Error loading conversation: {str(e)}")
                     with col2:
                         if st.button("🗑️", key=f"del_conv_{conv['conversation_id']}"):
                             # Delete conversation
-                            del_response = requests.delete(
-                                f"{API_BASE_URL}/chat/conversations/{conv['conversation_id']}",
-                                timeout=10
-                            )
-                            if del_response.status_code == 200:
-                                if st.session_state.get('conversation_id') == conv['conversation_id']:
-                                    st.session_state.conversation_id = None
-                                st.rerun()
+                            try:
+                                del_response = requests.delete(
+                                    f"{API_BASE_URL}/chat/conversations/{conv['conversation_id']}",
+                                    timeout=10
+                                )
+                                if del_response.status_code == 200:
+                                    if st.session_state.get('conversation_id') == conv['conversation_id']:
+                                        st.session_state.conversation_id = None
+                                        st.session_state.messages = []
+                                    st.rerun()
+                            except Exception as e:
+                                st.error(f"Error deleting: {str(e)}")
             else:
                 st.info("No conversations yet")
     except Exception as e:
