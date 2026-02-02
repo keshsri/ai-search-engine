@@ -40,7 +40,7 @@ st.markdown("Ask questions about your documents using natural language")
 with st.sidebar:
     st.header("📚 Document Management")
     
-    st.warning("⚠️ Max file size: **10MB** (backend limit)")
+    st.warning("⚠️ Max file size: **10MB**")
     
     # File upload
     uploaded_file = st.file_uploader(
