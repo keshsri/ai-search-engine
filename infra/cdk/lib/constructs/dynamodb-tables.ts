@@ -16,22 +16,20 @@ export class DynamoDBTables extends Construct {
 
     const removalPolicy = props?.removalPolicy ?? cdk.RemovalPolicy.DESTROY;
 
-    // Documents Table - stores document metadata
     this.documentsTable = new dynamodb.Table(this, 'DocumentsTable', {
       tableName: 'ai-search-documents',
       partitionKey: {
         name: 'document_id',
         type: dynamodb.AttributeType.STRING,
       },
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST, 
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: removalPolicy,
       pointInTimeRecoverySpecification: {
-        pointInTimeRecoveryEnabled: false, 
+        pointInTimeRecoveryEnabled: false,
       },
-      timeToLiveAttribute: 'ttl', // Auto-delete items after TTL expires
+      timeToLiveAttribute: 'ttl',
     });
 
-    // Chunks Table - stores document chunks with embeddings metadata
     this.chunksTable = new dynamodb.Table(this, 'ChunksTable', {
       tableName: 'document_chunks',
       partitionKey: {
@@ -47,10 +45,9 @@ export class DynamoDBTables extends Construct {
       pointInTimeRecoverySpecification: {
         pointInTimeRecoveryEnabled: false,
       },
-      timeToLiveAttribute: 'ttl', // Auto-delete items after TTL expires
+      timeToLiveAttribute: 'ttl',
     });
 
-    // Conversations Table - stores chat conversation history
     this.conversationsTable = new dynamodb.Table(this, 'ConversationsTable', {
       tableName: 'conversations',
       partitionKey: {
@@ -62,10 +59,9 @@ export class DynamoDBTables extends Construct {
       pointInTimeRecoverySpecification: {
         pointInTimeRecoveryEnabled: false,
       },
-      timeToLiveAttribute: 'ttl', // Auto-delete items after TTL expires
+      timeToLiveAttribute: 'ttl',
     });
 
-    // Outputs
     new cdk.CfnOutput(this, 'DocumentsTableName', {
       value: this.documentsTable.tableName,
       description: 'DynamoDB documents table name',

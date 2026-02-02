@@ -1,6 +1,3 @@
-"""
-Conversation management endpoints.
-"""
 import logging
 from typing import List
 from fastapi import APIRouter, HTTPException
@@ -20,12 +17,6 @@ router = APIRouter(prefix="/chat/conversations", tags=["conversations"])
 
 @router.get("/", response_model=List[ConversationListItem])
 def list_conversations():
-    """
-    List all conversations with basic metadata.
-    
-    Returns:
-        List of conversations with ID, creation time, and message count
-    """
     logger.info("Listing all conversations")
     
     try:
@@ -45,15 +36,6 @@ def list_conversations():
 
 @router.get("/{conversation_id}", response_model=ConversationDetail)
 def get_conversation(conversation_id: str):
-    """
-    Get a specific conversation with all messages.
-    
-    Args:
-        conversation_id: Conversation ID
-    
-    Returns:
-        Conversation with full message history
-    """
     logger.info(f"Getting conversation: {conversation_id}")
     
     try:
@@ -69,12 +51,10 @@ def get_conversation(conversation_id: str):
         
         logger.info(f"Retrieved conversation {conversation_id} with {len(conversation.get('messages', []))} messages")
         
-        # Handle missing fields gracefully
         from datetime import datetime
         created_at = conversation.get('created_at', datetime.utcnow().isoformat())
         updated_at = conversation.get('updated_at', created_at)
         
-        # Convert to response model
         return ConversationDetail(
             conversation_id=conversation['conversation_id'],
             user_id=conversation.get('user_id', 'anonymous'),
@@ -95,21 +75,11 @@ def get_conversation(conversation_id: str):
 
 @router.delete("/{conversation_id}", response_model=DeleteConversationResponse)
 def delete_conversation(conversation_id: str):
-    """
-    Delete a conversation and all its messages.
-    
-    Args:
-        conversation_id: Conversation ID to delete
-    
-    Returns:
-        Deletion status
-    """
     logger.info(f"Delete request for conversation: {conversation_id}")
     
     try:
         conversation_service = ConversationService()
         
-        # Check if conversation exists
         conversation = conversation_service.get_conversation(conversation_id)
         if not conversation:
             logger.warning(f"Conversation not found: {conversation_id}")
@@ -118,7 +88,6 @@ def delete_conversation(conversation_id: str):
                 detail=f"Conversation not found: {conversation_id}"
             )
         
-        # Delete conversation
         success = conversation_service.delete_conversation(conversation_id)
         
         if success:

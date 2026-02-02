@@ -6,13 +6,10 @@ import requests
 import os
 from dotenv import load_dotenv
 
-# Load environment variables
 load_dotenv()
 
-# Configuration
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
 
-# Page configuration
 st.set_page_config(
     page_title="AI Search Engine",
     page_icon="🔍",
@@ -20,7 +17,6 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS
 st.markdown("""
     <style>
     .main {
@@ -32,17 +28,14 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Title
 st.title("🔍 AI Semantic Search Engine")
 st.markdown("Ask questions about your documents using natural language")
 
-# Sidebar
 with st.sidebar:
     st.header("📚 Document Management")
     
     st.warning("⚠️ Max file size: **10MB**")
     
-    # File upload
     uploaded_file = st.file_uploader(
         "Upload Document",
         type=["pdf", "docx", "txt"],
@@ -74,7 +67,6 @@ with st.sidebar:
     
     st.divider()
     
-    # List documents
     st.subheader("Documents")
     try:
         response = requests.get(f"{API_BASE_URL}/documents/", timeout=10)
@@ -87,7 +79,6 @@ with st.sidebar:
                         st.text(doc.get("title", "Untitled")[:30])
                     with col2:
                         if st.button("🗑️", key=f"del_{doc['document_id']}"):
-                            # Delete document
                             del_response = requests.delete(
                                 f"{API_BASE_URL}/documents/{doc['document_id']}",
                                 timeout=10
@@ -101,7 +92,6 @@ with st.sidebar:
     
     st.divider()
     
-    # Conversation history
     st.subheader("💬 Conversations")
     try:
         response = requests.get(f"{API_BASE_URL}/chat/conversations/", timeout=10)
@@ -116,7 +106,6 @@ with st.sidebar:
                             key=f"conv_{conv['conversation_id']}",
                             use_container_width=True
                         ):
-                            # Load conversation messages
                             try:
                                 conv_response = requests.get(
                                     f"{API_BASE_URL}/chat/conversations/{conv['conversation_id']}",
@@ -124,11 +113,9 @@ with st.sidebar:
                                 )
                                 if conv_response.status_code == 200:
                                     conv_data = conv_response.json()
-                                    # Set conversation ID and load messages
                                     st.session_state.conversation_id = conv['conversation_id']
                                     st.session_state.messages = []
                                     
-                                    # Convert messages to session state format
                                     for msg in conv_data['messages']:
                                         st.session_state.messages.append({
                                             "role": msg['role'],
@@ -139,7 +126,6 @@ with st.sidebar:
                                 st.error(f"Error loading conversation: {str(e)}")
                     with col2:
                         if st.button("🗑️", key=f"del_conv_{conv['conversation_id']}"):
-                            # Delete conversation
                             try:
                                 del_response = requests.delete(
                                     f"{API_BASE_URL}/chat/conversations/{conv['conversation_id']}",
@@ -157,22 +143,18 @@ with st.sidebar:
     except Exception as e:
         st.error(f"Error loading conversations: {str(e)}")
     
-    # New conversation button
     if st.button("➕ New Conversation", type="secondary"):
         st.session_state.conversation_id = None
         st.session_state.messages = []
         st.rerun()
 
-# Main chat interface
 st.divider()
 
-# Initialize session state
 if "messages" not in st.session_state:
     st.session_state.messages = []
 if "conversation_id" not in st.session_state:
     st.session_state.conversation_id = None
 
-# Display chat messages
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
@@ -182,16 +164,12 @@ for message in st.session_state.messages:
                     st.markdown(f"**{i}. {source['document_title']}**")
                     st.text(source['content'][:200] + "...")
 
-# Chat input
 if prompt := st.chat_input("Ask a question about your documents..."):
-    # Add user message
     st.session_state.messages.append({"role": "user", "content": prompt})
     
-    # Display user message
     with st.chat_message("user"):
         st.markdown(prompt)
     
-    # Get AI response
     with st.chat_message("assistant"):
         with st.spinner("Thinking..."):
             try:
@@ -211,17 +189,14 @@ if prompt := st.chat_input("Ask a question about your documents..."):
                     sources = data["sources"]
                     st.session_state.conversation_id = data["conversation_id"]
                     
-                    # Display answer
                     st.markdown(answer)
                     
-                    # Display sources
                     if sources:
                         with st.expander("📄 Sources"):
                             for i, source in enumerate(sources[:3], 1):
                                 st.markdown(f"**{i}. {source['document_title']}**")
                                 st.text(source['content'][:200] + "...")
                     
-                    # Add to session state
                     st.session_state.messages.append({
                         "role": "assistant",
                         "content": answer,
@@ -242,7 +217,6 @@ if prompt := st.chat_input("Ask a question about your documents..."):
                     "content": error_msg
                 })
 
-# Footer
 st.divider()
 st.markdown("""
     <div style='text-align: center; color: gray; font-size: 12px;'>

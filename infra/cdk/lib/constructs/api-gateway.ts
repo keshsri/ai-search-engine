@@ -4,34 +4,11 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 
 export interface ApiGatewayProps {
-  /**
-   * Lambda function to integrate with API Gateway
-   */
   lambdaFunction: lambda.Function;
-
-  /**
-   * API name
-   */
   apiName?: string;
-
-  /**
-   * API description
-   */
   apiDescription?: string;
-
-  /**
-   * Stage name (default: dev)
-   */
   stageName?: string;
-
-  /**
-   * Throttling rate limit (requests per second)
-   */
   throttlingRateLimit?: number;
-
-  /**
-   * Throttling burst limit
-   */
   throttlingBurstLimit?: number;
 }
 
@@ -47,16 +24,15 @@ export class ApiGateway extends Construct {
     const throttlingRateLimit = props.throttlingRateLimit ?? 100;
     const throttlingBurstLimit = props.throttlingBurstLimit ?? 200;
 
-    // API Gateway REST API
     this.api = new apigateway.LambdaRestApi(this, 'RestApi', {
       restApiName: apiName,
       description: apiDescription,
       handler: props.lambdaFunction,
-      proxy: true, // Forward all requests to Lambda
+      proxy: true,
       deployOptions: {
         stageName: stageName,
-        throttlingRateLimit: throttlingRateLimit, // Requests per second
-        throttlingBurstLimit: throttlingBurstLimit, // Burst capacity
+        throttlingRateLimit: throttlingRateLimit,
+        throttlingBurstLimit: throttlingBurstLimit,
         loggingLevel: apigateway.MethodLoggingLevel.INFO,
         dataTraceEnabled: true,
         metricsEnabled: true,
@@ -69,7 +45,6 @@ export class ApiGateway extends Construct {
       cloudWatchRole: true,
     });
 
-    // Output
     new cdk.CfnOutput(this, 'ApiEndpoint', {
       value: this.api.url,
       description: 'API Gateway endpoint URL',

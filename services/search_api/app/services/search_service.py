@@ -17,15 +17,12 @@ class SearchService:
     def search(self, query: str, top_k: int = 5) -> List[SearchResult]:
         logger.info(f"Searching for query: '{query}' (top_k={top_k})")
         
-        # Get query embedding
         logger.debug("Generating query embedding")
         query_embedding = self.embedding_service.embed([query])
         
-        # Convert to numpy array for FAISS
         query_vector = np.array(query_embedding).astype('float32')
         logger.debug(f"Query vector shape: {query_vector.shape}")
         
-        # Search in vector store
         logger.debug(f"Searching vector store for top {top_k} results")
         results = self.vector_store.search(query_vector, top_k)
         

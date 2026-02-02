@@ -15,6 +15,7 @@ A serverless semantic search engine that enables natural language queries over d
 ## Technology Stack
 
 - **Backend**: FastAPI (Python 3.12)
+- **Frontend**: Streamlit (deployed on Streamlit Cloud)
 - **Infrastructure**: AWS CDK (TypeScript)
 - **Compute**: AWS Lambda (Docker containers)
 - **Storage**: DynamoDB, S3, FAISS

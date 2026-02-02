@@ -1,7 +1,7 @@
 from app.vector_store.faiss_vector_store import FAISSVectorStore
 from app.core.config import settings
 
-_vector_store = None  # module-level singleton
+_vector_store = None
 
 def get_vector_store() -> FAISSVectorStore:
     global _vector_store

@@ -34,23 +34,19 @@ from app.core.error_handlers import (
     generic_exception_handler,
 )
 
-# Setup logging
 setup_logging()
 
-# Detect if running in Lambda behind API Gateway
 root_path = ""
 if os.environ.get('AWS_LAMBDA_FUNCTION_NAME'):
-    # API Gateway adds /dev (or stage name) prefix
     root_path = f"/{os.environ.get('API_GATEWAY_STAGE', 'dev')}"
 
 app = FastAPI(
     title=settings.APP_NAME,
     description="AI-powered semantic search engine using RAG",
     version="0.1.0",
-    root_path=root_path,  # Fix for API Gateway stage prefix
+    root_path=root_path,
 )
 
-# ---- Exception Handlers ----
 app.add_exception_handler(DocumentNotFoundException, document_not_found_handler)
 app.add_exception_handler(InvalidFileTypeException, invalid_file_type_handler)
 app.add_exception_handler(FileSizeExceededException, file_size_exceeded_handler)
@@ -65,7 +61,6 @@ app.add_exception_handler(SearchAPIException, generic_search_api_exception_handl
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.add_exception_handler(Exception, generic_exception_handler)
 
-# ---- Routers ----
 app.include_router(health.router)
 app.include_router(documents.router)
 app.include_router(search.router)

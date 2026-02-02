@@ -16,7 +16,6 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
-# Initialize file processing services
 file_processor = FileProcessor()
 file_storage = FileStorage()
 
@@ -25,24 +24,15 @@ file_storage = FileStorage()
 def list_documents(
     vector_store=Depends(get_vector_store)
 ):
-    """
-    List all documents with their IDs and titles.
-    
-    Returns:
-        List of documents with basic metadata
-    """
     logger.info("Listing all documents")
     service = DocumentService(vector_store)
     
-    # Scan DynamoDB for all documents
     try:
         response = service.db.table.scan()
         documents = response.get('Items', [])
         
-        # Format response with safe field access
         result = []
         for doc in documents:
-            # Handle missing fields gracefully
             from datetime import datetime
             created_at = doc.get("created_at", datetime.utcnow().isoformat())
             
@@ -53,7 +43,6 @@ def list_documents(
                 "source": doc.get("source")
             })
         
-        # Sort by created_at (most recent first)
         result.sort(key=lambda x: x['created_at'], reverse=True)
         
         logger.info(f"Found {len(result)} documents")
@@ -92,25 +81,8 @@ async def upload_document(
     file: UploadFile = File(...),
     vector_store=Depends(get_vector_store)
 ):
-    """
-    Upload a document file (PDF, DOCX, or TXT).
-    
-    Args:
-        file: Uploaded file
-        vector_store: Injected vector store dependency
-    
-    Returns:
-        Document: Created document with metadata
-    
-    Raises:
-        InvalidFileTypeException: If file type is not supported
-        FileSizeExceededException: If file exceeds size limit
-        EmptyDocumentException: If no text can be extracted
-    """
-    
     logger.info(f"File upload request received: filename='{file.filename}'")
     
-    # 1. Validate file type
     file_extension = file.filename.split(".")[-1].lower()
     logger.debug(f"File extension detected: {file_extension}")
     
@@ -125,8 +97,7 @@ async def upload_document(
             }
         )
     
-    # 2. Validate file size (10MB limit)
-    MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB in bytes
+    MAX_FILE_SIZE = 10 * 1024 * 1024
     file_content = await file.read()
     file_size = len(file_content)
     
@@ -145,20 +116,16 @@ async def upload_document(
             }
         )
     
-    # Reset file pointer after reading
     await file.seek(0)
     
-    # 3. Generate document ID
     document_id = str(uuid.uuid4())
     logger.info(f"Generated document ID: {document_id}")
     
-    # 4. Save original file
     logger.debug("Saving original file to storage")
     file_path = file_storage.save(file.file, document_id, file_extension)
     logger.info(f"Original file saved: {file_path}")
     
-    # 5. Extract text from file
-    await file.seek(0)  # Reset pointer again
+    await file.seek(0)
     logger.debug("Extracting text from file")
     text = file_processor.extract_text(file.file, file_extension)
     
@@ -171,10 +138,9 @@ async def upload_document(
     
     logger.info(f"Text extracted successfully: {len(text)} characters")
     
-    # 6. Create document object
     document = Document(
         id=document_id,
-        title=file.filename,  # Use filename as title
+        title=file.filename,
         content=text,
         filename=file.filename,
         file_type=file_extension,
@@ -184,7 +150,6 @@ async def upload_document(
     
     logger.debug(f"Document object created: id={document_id}, title='{document.title}'")
     
-    # 7. Ingest document (existing logic)
     logger.info(f"Starting document ingestion: id={document_id}")
     service = DocumentService(vector_store)
     ingested_doc = service.ingest(document)

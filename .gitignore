@@ -224,3 +224,6 @@ faiss_meta.json
 
 # Uploaded files
 uploads/
+
+# Private links (local only)
+PRIVATE_LINKS.md

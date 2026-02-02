@@ -8,39 +8,12 @@ import { Construct } from 'constructs';
 import * as path from 'path';
 
 export interface SearchLambdaProps {
-  /**
-   * DynamoDB documents table
-   */
   documentsTable: dynamodb.Table;
-
-  /**
-   * DynamoDB chunks table
-   */
   chunksTable: dynamodb.Table;
-
-  /**
-   * DynamoDB conversations table
-   */
   conversationsTable: dynamodb.Table;
-
-  /**
-   * S3 bucket for documents and FAISS index
-   */
   documentsBucket: s3.Bucket;
-
-  /**
-   * Memory size in MB (default: 3008 MB = 3 GB)
-   */
   memorySize?: number;
-
-  /**
-   * Timeout in seconds (default: 300 = 5 minutes)
-   */
   timeout?: number;
-
-  /**
-   * Log retention in days (default: 3 days)
-   */
   logRetention?: logs.RetentionDays;
 }
 
@@ -50,11 +23,10 @@ export class SearchLambda extends Construct {
   constructor(scope: Construct, id: string, props: SearchLambdaProps) {
     super(scope, id);
 
-    const memorySize = props.memorySize ?? 3008; // 3 GB for embedding model
-    const timeout = props.timeout ?? 300; // 5 minutes
-    const logRetention = props.logRetention ?? logs.RetentionDays.THREE_DAYS; // Reduced for cost savings
+    const memorySize = props.memorySize ?? 3008;
+    const timeout = props.timeout ?? 300;
+    const logRetention = props.logRetention ?? logs.RetentionDays.THREE_DAYS;
 
-    // Lambda Function with Docker container
     this.function = new lambda.DockerImageFunction(this, 'Function', {
       functionName: 'ai-search-api',
       code: lambda.DockerImageCode.fromImageAsset(
@@ -65,27 +37,22 @@ export class SearchLambda extends Construct {
       ),
       memorySize: memorySize,
       timeout: cdk.Duration.seconds(timeout),
-      ephemeralStorageSize: cdk.Size.mebibytes(512), // Default, free tier
+      ephemeralStorageSize: cdk.Size.mebibytes(512),
       environment: {
-        // DynamoDB configuration
         DYNAMODB_DOCUMENT_TABLE: props.documentsTable.tableName,
         CHUNKS_TABLE_NAME: props.chunksTable.tableName,
         CONVERSATIONS_TABLE_NAME: props.conversationsTable.tableName,
         
-        // S3 configuration
         DOCUMENTS_BUCKET: props.documentsBucket.bucketName,
         FAISS_INDEX_S3_KEY: 'faiss/index.faiss',
         FAISS_METADATA_S3_KEY: 'faiss/metadata.json',
         
-        // Application configuration
         CHUNK_SIZE: '300',
         LOG_LEVEL: 'INFO',
         APP_NAME: 'AI Semantic Search API',
         
-        // API Gateway stage for docs
         API_GATEWAY_STAGE: 'dev',
         
-        // Bedrock configuration
         BEDROCK_MODEL_ID: 'amazon.nova-micro-v1:0',
       },
       logGroup: new logs.LogGroup(this, 'LogGroup', {
@@ -95,23 +62,20 @@ export class SearchLambda extends Construct {
       }),
     });
 
-    // Grant permissions
     props.documentsTable.grantReadWriteData(this.function);
     props.chunksTable.grantReadWriteData(this.function);
     props.conversationsTable.grantReadWriteData(this.function);
     props.documentsBucket.grantReadWrite(this.function);
 
-    // Grant Bedrock permissions
     this.function.addToRolePolicy(new iam.PolicyStatement({
       effect: iam.Effect.ALLOW,
       actions: [
         'bedrock:InvokeModel',
         'bedrock:InvokeModelWithResponseStream',
       ],
-      resources: ['*'], // Allow all Bedrock models
+      resources: ['*'],
     }));
 
-    // Outputs
     new cdk.CfnOutput(this, 'FunctionName', {
       value: this.function.functionName,
       description: 'Lambda function name',

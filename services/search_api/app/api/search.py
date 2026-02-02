@@ -19,7 +19,6 @@ def semantic_search(
 ):
     logger.info(f"Search request received: query='{request.query}', top_k={request.top_k}")
     
-    # Validate query
     if not request.query or not request.query.strip():
         logger.warning("Empty search query received")
         raise InvalidSearchQueryException(

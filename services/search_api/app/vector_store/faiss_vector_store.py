@@ -18,14 +18,12 @@ class FAISSVectorStore:
         self.index_path = index_path
         self.metadata_path = metadata_path
         
-        # S3 configuration
         self.use_s3 = os.environ.get('AWS_LAMBDA_FUNCTION_NAME') is not None
         if self.use_s3:
             self.s3_client = boto3.client('s3')
             self.s3_bucket = os.environ.get('DOCUMENTS_BUCKET')
             self.s3_index_key = os.environ.get('FAISS_INDEX_S3_KEY', 'faiss/index.faiss')
             self.s3_metadata_key = os.environ.get('FAISS_METADATA_S3_KEY', 'faiss/metadata.json')
-            # Use /tmp for local cache in Lambda
             self.index_path = f"/tmp/{os.path.basename(index_path)}"
             self.metadata_path = f"/tmp/{os.path.basename(metadata_path)}"
             logger.info(f"Running in Lambda, using S3 bucket: {self.s3_bucket}")
@@ -39,7 +37,6 @@ class FAISSVectorStore:
         logger.info(f"FAISS index initialized with {self.index.ntotal} vectors and {len(self.metadata)} metadata entries")
 
     def _download_from_s3(self, s3_key: str, local_path: str) -> bool:
-        """Download file from S3 to local path. Returns True if successful."""
         try:
             logger.info(f"Downloading {s3_key} from S3 bucket {self.s3_bucket} to {local_path}")
             self.s3_client.download_file(self.s3_bucket, s3_key, local_path)
@@ -63,7 +60,6 @@ class FAISSVectorStore:
             )
 
     def _upload_to_s3(self, local_path: str, s3_key: str):
-        """Upload file from local path to S3."""
         try:
             logger.info(f"Uploading {local_path} to S3 bucket {self.s3_bucket} as {s3_key}")
             self.s3_client.upload_file(local_path, self.s3_bucket, s3_key)
@@ -76,7 +72,6 @@ class FAISSVectorStore:
             )
 
     def _load_or_create_index(self):
-        # Try to load from S3 if in Lambda
         if self.use_s3:
             self._download_from_s3(self.s3_index_key, self.index_path)
         
@@ -104,7 +99,6 @@ class FAISSVectorStore:
                 )
 
     def _load_metadata(self) -> List[Dict]:
-        # Try to load from S3 if in Lambda
         if self.use_s3:
             self._download_from_s3(self.s3_metadata_key, self.metadata_path)
         
@@ -191,13 +185,11 @@ class FAISSVectorStore:
     def _persist(self):
         logger.debug(f"Persisting FAISS index to {self.index_path} and metadata to {self.metadata_path}")
         try:
-            # Save locally first
             faiss.write_index(self.index, self.index_path)
             with open(self.metadata_path, "w") as f:
                 json.dump(self.metadata, f, indent=2)
             logger.info(f"Successfully persisted FAISS index ({self.index.ntotal} vectors) and {len(self.metadata)} metadata entries locally")
             
-            # Upload to S3 if in Lambda
             if self.use_s3:
                 self._upload_to_s3(self.index_path, self.s3_index_key)
                 self._upload_to_s3(self.metadata_path, self.s3_metadata_key)
@@ -212,25 +204,12 @@ class FAISSVectorStore:
             )
 
     def delete_by_document_id(self, document_id: str) -> int:
-        """
-        Delete all vectors associated with a document.
-        
-        Note: FAISS doesn't support efficient deletion, so we rebuild the index
-        without the deleted document's vectors.
-        
-        Args:
-            document_id: Document ID whose vectors should be deleted
-        
-        Returns:
-            int: Number of vectors deleted
-        """
         logger.info(f"Deleting vectors for document_id={document_id}")
         
         if self.index.ntotal == 0:
             logger.info("Index is empty, nothing to delete")
             return 0
         
-        # Find indices to keep (all except the ones for this document)
         indices_to_keep = []
         metadata_to_keep = []
         deleted_count = 0
@@ -249,32 +228,25 @@ class FAISSVectorStore:
         logger.info(f"Found {deleted_count} vectors to delete for document_id={document_id}")
         
         try:
-            # Rebuild index without deleted vectors
             if len(indices_to_keep) == 0:
-                # All vectors deleted, create empty index
                 logger.info("All vectors deleted, creating empty index")
                 self.index = faiss.IndexFlatIP(self.dim)
                 self.metadata = []
             else:
-                # Reconstruct vectors for indices to keep
                 logger.info(f"Rebuilding index with {len(indices_to_keep)} remaining vectors")
                 
-                # Get all vectors from current index
                 all_vectors = np.zeros((self.index.ntotal, self.dim), dtype='float32')
                 for i in range(self.index.ntotal):
                     all_vectors[i] = self.index.reconstruct(i)
                 
-                # Keep only the vectors we want
                 vectors_to_keep = all_vectors[indices_to_keep]
                 
-                # Create new index and add kept vectors
                 self.index = faiss.IndexFlatIP(self.dim)
                 self.index.add(vectors_to_keep)
                 self.metadata = metadata_to_keep
                 
                 logger.info(f"Successfully rebuilt index with {self.index.ntotal} vectors")
             
-            # Persist changes
             self._persist()
             logger.info(f"Successfully deleted {deleted_count} vectors for document_id={document_id}")
             return deleted_count
