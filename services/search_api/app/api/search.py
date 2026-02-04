@@ -17,7 +17,7 @@ def semantic_search(
     request: SearchRequest,
     vector_store=Depends(get_vector_store)
 ):
-    logger.info(f"Search request received: query='{request.query}', top_k={request.top_k}")
+    logger.info(f"Search request received (top_k={request.top_k})")
     
     if not request.query or not request.query.strip():
         logger.warning("Empty search query received")
@@ -39,6 +39,6 @@ def semantic_search(
     logger.debug("Executing semantic search")
     results = search_service.search(request.query, request.top_k)
     
-    logger.info(f"Search completed: found {len(results)} results for query='{request.query}'")
+    logger.info(f"Search completed: found {len(results)} results")
     
     return results

@@ -29,6 +29,11 @@ class Settings(BaseSettings):
     BEDROCK_MAX_TOKENS: int = 3000  # Nova Micro supports up to 5K output tokens
     BEDROCK_TEMPERATURE: float = 0.7
 
+    # Tavily Web Search
+    TAVILY_API_KEY: str = ""  # Set via environment variable or GitHub Secrets
+    TAVILY_MAX_RESULTS: int = 3  # Number of web results to fetch
+    TAVILY_SEARCH_DEPTH: str = "basic"  # "basic" or "advanced"
+
     class Config:
         env_file = ".env"
 

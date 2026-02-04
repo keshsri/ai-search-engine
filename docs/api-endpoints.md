@@ -180,7 +180,8 @@ Content-Type: application/json
 {
   "query": "What is Python used for in AI?",
   "conversation_id": null,
-  "top_k": 5
+  "top_k": 5,
+  "use_web_search": false
 }
 ```
 
@@ -188,6 +189,7 @@ Content-Type: application/json
 - `query` (required): Question
 - `conversation_id` (optional): UUID for follow-up questions (null for new conversation)
 - `top_k` (optional): Number of context chunks (default: 5)
+- `use_web_search` (optional): Include web search results via Tavily (default: false)
 
 **Response**:
 ```json
@@ -196,21 +198,43 @@ Content-Type: application/json
   "conversation_id": "uuid",
   "sources": [
     {
+      "type": "document",
       "document_id": "uuid",
       "document_title": "Python Guide",
       "content": "Python has emerged as...",
       "score": 0.92
+    },
+    {
+      "type": "web",
+      "title": "Python in AI - 2026 Guide",
+      "url": "https://example.com/python-ai",
+      "content": "Python dominates AI development...",
+      "score": 0.88
     }
   ],
   "model": "amazon.nova-micro-v1:0"
 }
 ```
 
+**Source Types**:
+- `document`: From your uploaded documents
+- `web`: From Tavily web search (only if `use_web_search: true`)
+
 **Example - New Conversation**:
 ```bash
 curl -X POST https://your-api/dev/chat/ \
   -H "Content-Type: application/json" \
   -d '{"query": "What is Python used for in AI?"}'
+```
+
+**Example - With Web Search**:
+```bash
+curl -X POST https://your-api/dev/chat/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "What are the latest AI trends?",
+    "use_web_search": true
+  }'
 ```
 
 **Example - Follow-up**:

@@ -27,6 +27,7 @@ class ChatRequest(BaseModel):
     query: str = Field(..., description="User's question", min_length=1)
     conversation_id: Optional[str] = Field(None, description="Conversation ID for follow-up questions")
     top_k: int = Field(5, description="Number of context chunks to retrieve", ge=1, le=10)
+    use_web_search: bool = Field(False, description="Include web search results from Tavily")
 
 
 class ChatResponse(BaseModel):

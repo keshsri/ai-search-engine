@@ -27,6 +27,12 @@ export class SearchLambda extends Construct {
     const timeout = props.timeout ?? 300;
     const logRetention = props.logRetention ?? logs.RetentionDays.THREE_DAYS;
 
+    const tavilyApiKey = scope.node.tryGetContext('tavilyApiKey') || '';
+    
+    if (!tavilyApiKey) {
+      console.warn('WARNING: tavilyApiKey not provided. Web search will be unavailable.');
+    }
+
     this.function = new lambda.DockerImageFunction(this, 'Function', {
       functionName: 'ai-search-api',
       code: lambda.DockerImageCode.fromImageAsset(
@@ -54,6 +60,7 @@ export class SearchLambda extends Construct {
         API_GATEWAY_STAGE: 'dev',
         
         BEDROCK_MODEL_ID: 'amazon.nova-micro-v1:0',
+        TAVILY_API_KEY: tavilyApiKey,
       },
       logGroup: new logs.LogGroup(this, 'LogGroup', {
         logGroupName: `/aws/lambda/ai-search-api`,

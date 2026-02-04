@@ -9,6 +9,7 @@ Visit this [Wiki](https://deepwiki.com/keshsri/ai-search-engine) for complete an
 - **Document Ingestion**: Upload PDF, DOCX, and TXT files with automatic text extraction
 - **Semantic Search**: Natural language queries using sentence-transformer embeddings
 - **RAG Chat**: AI-generated answers grounded in your documents using AWS Bedrock (Amazon Nova Micro)
+- **Web Search Integration**: Optional real-time web search via Tavily API for current information
 - **Conversation History**: Multi-turn dialogues with context preservation
 - **Document Management**: List and delete documents with full cleanup
 - **Serverless Architecture**: Auto-scaling, pay-per-use infrastructure on AWS
@@ -89,6 +90,7 @@ Client → API Gateway → Lambda (FastAPI)
 
 - [System Design](docs/design.md) - Architecture and design decisions
 - [API Reference](docs/api-endpoints.md) - Complete API documentation
+- [Tavily Integration](docs/tavily-integration.md) - Web search setup and usage
 - [AWS Deployment](docs/aws-deployment.md) - Deployment guide
 - [Known Issues](docs/known-issues.md) - Limitations and workarounds
 - [Error Handling](docs/error-handling.md) - Error types and responses

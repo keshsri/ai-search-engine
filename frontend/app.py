@@ -154,15 +154,41 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 if "conversation_id" not in st.session_state:
     st.session_state.conversation_id = None
+if "use_web_search" not in st.session_state:
+    st.session_state.use_web_search = False
+
+# Web search toggle
+col1, col2 = st.columns([3, 1])
+with col1:
+    st.markdown("### 💬 Chat")
+with col2:
+    web_search_enabled = st.checkbox(
+        "🌐 Web",
+        value=st.session_state.use_web_search,
+        help="Include web search results in answers"
+    )
+    st.session_state.use_web_search = web_search_enabled
 
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
         if message["role"] == "assistant" and "sources" in message:
+            # Separate document and web sources
+            doc_sources = [s for s in message["sources"] if s.get('type') == 'document']
+            web_sources = [s for s in message["sources"] if s.get('type') == 'web']
+            
             with st.expander("📄 Sources"):
-                for i, source in enumerate(message["sources"][:3], 1):
-                    st.markdown(f"**{i}. {source['document_title']}**")
-                    st.text(source['content'][:200] + "...")
+                if doc_sources:
+                    st.markdown("**From Your Documents:**")
+                    for i, source in enumerate(doc_sources[:3], 1):
+                        st.markdown(f"**{i}. {source.get('document_title', 'Unknown')}**")
+                        st.text(source['content'][:200] + "...")
+                
+                if web_sources:
+                    st.markdown("**From Web Search:**")
+                    for i, source in enumerate(web_sources[:3], 1):
+                        st.markdown(f"**{i}. [{source['title']}]({source['url']})**")
+                        st.text(source['content'][:200] + "...")
 
 if prompt := st.chat_input("Ask a question about your documents..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
@@ -173,12 +199,16 @@ if prompt := st.chat_input("Ask a question about your documents..."):
     with st.chat_message("assistant"):
         with st.spinner("Thinking..."):
             try:
+                # Check if web search should be enabled
+                use_web_search = st.session_state.get('use_web_search', False)
+                
                 response = requests.post(
                     f"{API_BASE_URL}/chat/",
                     json={
                         "query": prompt,
                         "conversation_id": st.session_state.conversation_id,
-                        "top_k": 5
+                        "top_k": 5,
+                        "use_web_search": use_web_search
                     },
                     timeout=60
                 )
@@ -192,10 +222,22 @@ if prompt := st.chat_input("Ask a question about your documents..."):
                     st.markdown(answer)
                     
                     if sources:
+                        # Separate document and web sources
+                        doc_sources = [s for s in sources if s.get('type') == 'document']
+                        web_sources = [s for s in sources if s.get('type') == 'web']
+                        
                         with st.expander("📄 Sources"):
-                            for i, source in enumerate(sources[:3], 1):
-                                st.markdown(f"**{i}. {source['document_title']}**")
-                                st.text(source['content'][:200] + "...")
+                            if doc_sources:
+                                st.markdown("**From Your Documents:**")
+                                for i, source in enumerate(doc_sources[:3], 1):
+                                    st.markdown(f"**{i}. {source['document_title']}**")
+                                    st.text(source['content'][:200] + "...")
+                            
+                            if web_sources:
+                                st.markdown("**From Web Search:**")
+                                for i, source in enumerate(web_sources[:3], 1):
+                                    st.markdown(f"**{i}. [{source['title']}]({source['url']})**")
+                                    st.text(source['content'][:200] + "...")
                     
                     st.session_state.messages.append({
                         "role": "assistant",

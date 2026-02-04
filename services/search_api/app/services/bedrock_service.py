@@ -28,6 +28,7 @@ class BedrockService:
         self,
         query: str,
         context_chunks: List[Dict],
+        web_results: Optional[List] = None,
         conversation_history: Optional[List[Dict]] = None
     ) -> Dict:
         """
@@ -36,15 +37,16 @@ class BedrockService:
         Args:
             query: User's question
             context_chunks: Retrieved document chunks for context
+            web_results: Web search results from Tavily (optional)
             conversation_history: Previous messages in conversation
         
         Returns:
             Dict with 'answer' and 'model' keys
         """
-        logger.info(f"Generating answer for query: {query[:100]}...")
+        logger.info(f"Generating answer with Bedrock")
         
         # Build prompt with context
-        prompt = self._build_prompt(query, context_chunks, conversation_history)
+        prompt = self._build_prompt(query, context_chunks, web_results, conversation_history)
         
         # Call Bedrock
         try:
@@ -62,15 +64,24 @@ class BedrockService:
         self,
         query: str,
         context_chunks: List[Dict],
+        web_results: Optional[List] = None,
         conversation_history: Optional[List[Dict]] = None
     ) -> str:
         """Build the prompt with context and conversation history."""
         
-        # Format context chunks
-        context_text = "\n\n".join([
-            f"[Document: {chunk.document_title}]\n{chunk.content}"
-            for chunk in context_chunks
-        ])
+        # Format document context chunks
+        context_text = ""
+        if context_chunks:
+            context_text = "Context from your uploaded documents:\n\n"
+            for i, chunk in enumerate(context_chunks, 1):
+                context_text += f"[Document {i}: {chunk.document_title}]\n{chunk.content}\n\n"
+        
+        # Format web search results
+        web_text = ""
+        if web_results:
+            web_text = "Additional context from web search:\n\n"
+            for i, result in enumerate(web_results, 1):
+                web_text += f"[Web Source {i}: {result.title}]\nURL: {result.url}\n{result.content}\n\n"
         
         # Build conversation history
         history_text = ""
@@ -83,21 +94,21 @@ class BedrockService:
         # Construct full prompt
         prompt = f"""You are a helpful AI assistant that answers questions based on provided context.
 
-Context from documents:
-{context_text}
-{history_text}
+{context_text}{web_text}{history_text}
 
 User question: {query}
 
 Instructions:
 - Answer the question based on the provided context
+- If using information from documents, cite the document name
+- If using information from web sources, mention it's from web search and include the source
 - If the context doesn't contain enough information, say so
 - Be concise but complete
-- Cite which document(s) you're referencing when relevant
+- Distinguish between information from uploaded documents vs. web sources
 
 Answer:"""
         
-        logger.debug(f"Built prompt with {len(context_chunks)} chunks and {len(conversation_history or [])} history messages")
+        logger.debug(f"Built prompt with {len(context_chunks)} document chunks, {len(web_results or [])} web results, and {len(conversation_history or [])} history messages")
         return prompt
     
     def _invoke_model(self, prompt: str) -> Dict:

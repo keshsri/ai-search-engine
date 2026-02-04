@@ -33,11 +33,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-      
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
+          cache: 'npm'
+          cache-dependency-path: infra/cdk/package-lock.json
       
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -51,6 +48,8 @@ jobs:
       
       - name: CDK Deploy
         working-directory: infra/cdk
+        env:
+          TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
         run: |
           npm install -g aws-cdk
-          cdk deploy --require-approval never
+          cdk deploy --require-approval never --context tavilyApiKey=$TAVILY_API_KEY

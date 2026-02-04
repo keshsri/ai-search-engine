@@ -15,7 +15,7 @@ class SearchService:
         logger.debug("SearchService initialized")
 
     def search(self, query: str, top_k: int = 5) -> List[SearchResult]:
-        logger.info(f"Searching for query: '{query}' (top_k={top_k})")
+        logger.info(f"Searching for query (top_k={top_k})")
         
         logger.debug("Generating query embedding")
         query_embedding = self.embedding_service.embed([query])
