@@ -55,7 +55,7 @@ export class SearchLambda extends Construct {
         
         CHUNK_SIZE: '300',
         LOG_LEVEL: 'INFO',
-        APP_NAME: 'AI Semantic Search API',
+        APP_NAME: 'OmniSearch AI',
         
         API_GATEWAY_STAGE: 'dev',
         

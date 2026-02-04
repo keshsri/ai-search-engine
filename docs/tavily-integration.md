@@ -1,10 +1,10 @@
 # Tavily Web Search Integration
 
-This document explains the Tavily web search integration added to the AI Semantic Search Engine.
+This document explains the Tavily web search integration added to OmniSearch AI.
 
 ## Overview
 
-The system now supports hybrid search combining:
+OmniSearch AI supports hybrid search combining:
 - **Document Search**: Semantic search over your uploaded documents (existing)
 - **Web Search**: Real-time web search via Tavily API (new)
 

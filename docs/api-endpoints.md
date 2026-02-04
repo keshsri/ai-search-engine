@@ -1,6 +1,6 @@
 # API Reference
 
-Complete API documentation for the AI Semantic Search Engine.
+Complete API documentation for OmniSearch AI.
 
 ## Base URL
 

@@ -42,8 +42,8 @@ if os.environ.get('AWS_LAMBDA_FUNCTION_NAME'):
 
 app = FastAPI(
     title=settings.APP_NAME,
-    description="AI-powered semantic search engine using RAG",
-    version="0.1.0",
+    description="Intelligent search engine combining documents and web search with AI-powered answers",
+    version="1.0.0",
     root_path=root_path,
 )
 

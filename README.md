@@ -1,6 +1,6 @@
-# AI Semantic Search Engine with RAG
+# OmniSearch AI
 
-A serverless semantic search engine that enables natural language queries over document collections using Retrieval-Augmented Generation (RAG).
+An intelligent search engine that combines your documents with real-time web search, powered by AI to deliver precise, contextual answers using Retrieval-Augmented Generation (RAG).
 
 Visit this [Wiki](https://deepwiki.com/keshsri/ai-search-engine) for complete and detailed AI generated documentation about this repositry.
 
@@ -23,6 +23,7 @@ Visit this [Wiki](https://deepwiki.com/keshsri/ai-search-engine) for complete an
 - **Compute**: AWS Lambda (Docker containers)
 - **Storage**: DynamoDB, S3, FAISS
 - **AI/ML**: sentence-transformers, AWS Bedrock (Amazon Nova Micro)
+- **Web Search**: Tavily API
 - **CI/CD**: GitHub Actions with OIDC
 
 ## Quick Start

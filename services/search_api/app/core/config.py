@@ -3,7 +3,7 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     # App
-    APP_NAME: str = "ai-search-engine"
+    APP_NAME: str = "OmniSearch AI"
     ENV: str = "dev"
 
     # AWS

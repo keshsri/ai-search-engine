@@ -32,8 +32,8 @@ export class SearchInfraStack extends cdk.Stack {
 
     new ApiGateway(this, 'ApiGateway', {
       lambdaFunction: searchLambda.function,
-      apiName: 'AI Semantic Search API',
-      apiDescription: 'Serverless semantic search API with RAG',
+      apiName: 'OmniSearch AI API',
+      apiDescription: 'Intelligent search API combining documents and web search',
       stageName: 'dev',
       throttlingRateLimit: 10,
       throttlingBurstLimit: 20,

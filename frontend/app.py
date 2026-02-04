@@ -11,7 +11,7 @@ load_dotenv()
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
 
 st.set_page_config(
-    page_title="AI Search Engine",
+    page_title="OmniSearch AI",
     page_icon="🔍",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -28,8 +28,8 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-st.title("🔍 AI Semantic Search Engine")
-st.markdown("Ask questions about your documents using natural language")
+st.title("🔍 OmniSearch AI")
+st.markdown("Search everything. Understand anything.")
 
 with st.sidebar:
     st.header("📚 Document Management")
@@ -262,6 +262,6 @@ if prompt := st.chat_input("Ask a question about your documents..."):
 st.divider()
 st.markdown("""
     <div style='text-align: center; color: gray; font-size: 12px;'>
-        AI Semantic Search Engine | Powered by AWS Bedrock & FastAPI
+        OmniSearch AI | Powered by AWS Bedrock & Tavily
     </div>
 """, unsafe_allow_html=True)

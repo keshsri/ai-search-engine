@@ -1,23 +1,24 @@
-# AI Semantic Search Engine - System Design
+# OmniSearch AI - System Design
 
 **Status**: Implemented  
-**Last Updated**: January 2026
+**Last Updated**: February 2026
 
 ## 1. Executive Summary
 
-A serverless semantic search engine with RAG capabilities that enables natural language queries over document collections. Users can upload documents (PDF, DOCX, TXT), perform semantic search, and receive AI-generated answers grounded in their content.
+OmniSearch AI is an intelligent search engine with RAG capabilities that enables natural language queries over document collections and real-time web search. Users can upload documents (PDF, DOCX, TXT), perform semantic search, and receive AI-generated answers grounded in their content or current web information.
 
-**Key Technologies**: FastAPI, AWS Lambda, DynamoDB, S3, FAISS, sentence-transformers, AWS Bedrock (Amazon Nova Micro)
+**Key Technologies**: FastAPI, AWS Lambda, DynamoDB, S3, FAISS, sentence-transformers, AWS Bedrock (Amazon Nova Micro), Tavily (Web Search)
 
 ## 2. Problem Statement
 
 Traditional keyword search fails to understand semantic meaning, intent, and context. Users need:
 - Natural language queries that understand intent
 - Direct answers instead of document lists
+- Access to both private documents and current web information
 - Source attribution for verification
 - Conversational follow-up questions
 
-This system bridges the gap using semantic embeddings and RAG to provide accurate, grounded responses.
+This system bridges the gap using semantic embeddings, RAG, and hybrid search (documents + web) to provide accurate, grounded responses.
 
 ## 3. Architecture
 
@@ -33,7 +34,8 @@ API Gateway (REST API)
 Lambda Function (Docker, 3GB memory, 5min timeout)
     ├─ FastAPI application
     ├─ sentence-transformers (all-MiniLM-L6-v2)
-    └─ FAISS vector store
+    ├─ FAISS vector store
+    └─ Tavily client (web search)
     ↓
 ├─ DynamoDB (3 tables)
 │   ├─ documents (metadata)
@@ -44,21 +46,26 @@ Lambda Function (Docker, 3GB memory, 5min timeout)
 │   ├─ Uploaded files
 │   └─ FAISS index + metadata
 │
-└─ AWS Bedrock
-    └─ Amazon Nova Micro (LLM)
+├─ AWS Bedrock
+│   └─ Amazon Nova Micro (LLM)
+│
+└─ Tavily API
+    └─ Web search results
 ```
 
 ### Component Responsibilities
 
 **API Gateway**: Request routing, throttling, CORS, logging
 
-**Lambda**: Stateless processing, text extraction, chunking, embeddings, vector search, LLM orchestration
+**Lambda**: Stateless processing, text extraction, chunking, embeddings, vector search, web search, LLM orchestration
 
 **DynamoDB**: Document metadata, text chunks, conversation history (pay-per-request billing)
 
 **S3**: File storage, FAISS index persistence
 
 **Bedrock**: LLM inference for answer generation
+
+**Tavily**: Real-time web search for current information
 
 ## 4. Data Flow
 
@@ -81,13 +88,14 @@ Lambda Function (Docker, 3GB memory, 5min timeout)
 
 ### RAG Chat
 
-1. Client sends query + optional conversation_id
+1. Client sends query + optional conversation_id + optional use_web_search flag
 2. Retrieve relevant chunks (semantic search)
-3. Load conversation history (if exists)
-4. Build prompt: context + history + query
-5. Call Bedrock (Amazon Nova Micro)
-6. Save conversation to DynamoDB
-7. Return answer + sources + conversation_id
+3. If web search enabled, fetch results from Tavily
+4. Load conversation history (if exists)
+5. Build prompt: document context + web context + history + query
+6. Call Bedrock (Amazon Nova Micro)
+7. Save conversation to DynamoDB
+8. Return answer + sources (documents and/or web) + conversation_id
 
 ## 5. Core Components
 
@@ -115,6 +123,13 @@ Lambda Function (Docker, 3GB memory, 5min timeout)
 - **Storage**: DynamoDB (messages as list for atomic updates)
 - **Context**: Last 5 messages included in LLM prompts
 - **Expiration**: 15-day TTL (auto-deletion)
+
+### Tavily Service
+- **API**: REST API with API key authentication
+- **Search Depth**: Basic (fast) or Advanced (comprehensive)
+- **Results**: Top 3 web results per query
+- **Caching**: No caching (always fresh results)
+- **Cost**: Free tier 1,000 searches/month
 
 ## 6. API Design
 
